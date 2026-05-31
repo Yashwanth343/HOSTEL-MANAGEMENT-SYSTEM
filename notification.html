@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Notifications & Messages</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+
+  .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+  .stat-card-nt { background: white; padding: 18px 22px; border-radius: 16px; display: flex; align-items: center; gap: 16px; border: 1px solid #F1F5F9; box-shadow: 0 4px 12px rgba(0,0,0,0.04); transition: transform 0.2s, box-shadow 0.2s; }
+  .stat-card-nt:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+  .stat-icon-nt { width: 54px; height: 54px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; box-shadow: inset 0 2px 4px rgba(255,255,255,0.3); }
+  .stat-info-nt .s-title { font-size: 13px; font-weight: 700; color: #64748B; display:block; margin-bottom:4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .stat-info-nt .s-val { font-size: 26px; font-weight: 800; color: #0F172A; display:block; }
+  .stat-info-nt .s-sub { font-size: 12px; color: #94A3B8; font-weight: 500; }
+
+  .content-grid { display: grid; grid-template-columns: 1fr 360px; gap: 24px; }
+
+  /* Left panel */
+  .left-panel { background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); border-radius: 16px; border: 1px solid rgba(255,255,255,0.5); box-shadow: 0 4px 16px rgba(0,0,0,0.04); display: flex; flex-direction: column; min-height: 600px; overflow: hidden; }
+
+  .tabs-row { display: flex; border-bottom: 1px solid #E2E8F0; padding: 0 24px; background: white; }
+  .tab-btn { padding: 16px 20px; font-size: 14px; font-weight: 700; color: #64748B; cursor: pointer; border-bottom: 3px solid transparent; transition: 0.2s; }
+  .tab-btn:hover { color: #0F172A; background: #F8FAFC; }
+  .tab-btn.active { color: #1D4ED8; border-bottom-color: #1D4ED8; background: #EFF6FF; }
+
+  /* Send Message form */
+  .send-form { padding: 24px; border-bottom: 1px solid #F1F5F9; background: #F8FAFC; }
+  .send-form h4 { font-size: 14px; font-weight: 800; color: #0F172A; margin-bottom: 16px; }
+  .send-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .sf-group label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px; letter-spacing: 0.3px; }
+  .sf-group input, .sf-group select, .sf-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; color: #0F172A; outline: none; transition: 0.2s; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
+  .sf-group input:focus, .sf-group select:focus, .sf-group textarea:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  .sf-full { grid-column: span 2; }
+  .send-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px; }
+  .btn-send { padding: 10px 20px; background: linear-gradient(135deg, #1D4ED8, #3B82F6); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 10px rgba(59,130,246,0.3); transition: 0.2s; }
+  .btn-send:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-draft { padding: 10px 16px; background: white; color: #475569; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+  .btn-draft:hover { background: #F8FAFC; }
+
+  /* Filters bar */
+  .filters-bar { padding: 16px 24px; border-bottom: 1px solid #F1F5F9; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; background: white; }
+  .filters-bar select { padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; color: #475569; outline: none; font-weight: 600; cursor: pointer; transition: 0.2s; }
+  .filters-bar select:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .search-box { position: relative; flex: 1; min-width: 180px; }
+  .search-box i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94A3B8; font-size: 14px; }
+  .search-box input { width: 100%; padding: 9px 12px 9px 36px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; outline: none; transition: 0.2s; }
+  .search-box input:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+  .btn-clear { padding: 8px 14px; border: 1px solid #FEE2E2; border-radius: 8px; background: #FEF2F2; font-size: 12px; font-weight: 700; color: #EF4444; cursor: pointer; transition: 0.2s; }
+  .btn-clear:hover { background: #FEE2E2; }
+
+  /* Table */
+  .notif-table-wrap { flex: 1; overflow-x: auto; background: white; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 11px; font-weight: 800; color: #64748B; padding: 14px 24px; border-bottom: 2px solid #F1F5F9; white-space: nowrap; text-transform: uppercase; letter-spacing: 0.5px; background: #F8FAFC; text-align: left; }
+  td { font-size: 13px; color: #475569; padding: 14px 24px; border-bottom: 1px solid #F1F5F9; vertical-align: middle; font-weight: 500; transition: background 0.2s; }
+  tr:last-child td { border-bottom: none; }
+  tr.selected td { background: #EFF6FF; }
+  tr:hover td { background: #FAFBFF; cursor: pointer; }
+  tr.selected:hover td { background: #E0E7FF; }
+
+  .notif-title-cell { font-weight: 700; color: #0F172A; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .unread-dot { width: 8px; height: 8px; background: #3B82F6; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px rgba(59,130,246,0.6); }
+  .notif-desc { font-size: 12px; color: #64748B; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; font-weight: 500; }
+
+  .badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; display: inline-block; letter-spacing: 0.3px; }
+  .badge-general { background: #EFF6FF; color: #2563EB; }
+  .badge-fee { background: #ECFDF5; color: #059669; }
+  .badge-maintenance { background: #FFF7ED; color: #EA580C; }
+  .badge-complaint { background: #FAF5FF; color: #7C3AED; }
+  .badge-alert { background: #FEF2F2; color: #DC2626; }
+
+  .pri-low { color: #10B981; font-weight: 800; font-size: 12px; }
+  .pri-medium { color: #F59E0B; font-weight: 800; font-size: 12px; }
+  .pri-high { color: #EF4444; font-weight: 800; font-size: 12px; }
+
+  .st-delivered { color: #10B981; font-weight: 700; font-size: 12px; }
+  .st-read { color: #3B82F6; font-weight: 700; font-size: 12px; }
+  .st-sent { color: #F59E0B; font-weight: 700; font-size: 12px; }
+
+  .act-btn { background: white; border: 1px solid #E2E8F0; color: #3B82F6; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+  .act-btn:hover { background: #EFF6FF; border-color: #BFDBFE; transform: translateY(-1px); }
+
+  .pagination { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; border-top: 1px solid #F1F5F9; background: white; }
+  .page-info { font-size: 13px; color: #64748B; font-weight: 600; }
+  .page-nums { display: flex; gap: 6px; }
+  .pg-btn { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; border: 1px solid #E2E8F0; border-radius: 8px; background: white; font-size: 13px; font-weight: 700; cursor: pointer; color: #475569; transition: 0.2s; }
+  .pg-btn.active { background: linear-gradient(135deg, #1D4ED8, #3B82F6); color: white; border-color: #1D4ED8; box-shadow: 0 2px 6px rgba(59,130,246,0.3); }
+  .pg-btn:hover:not(.active) { background: #F8FAFC; border-color: #CBD5E1; }
+
+  /* Right Details Panel */
+  .right-panel { display: flex; flex-direction: column; gap: 20px; }
+  .detail-card { background: white; border-radius: 16px; border: 1px solid #F1F5F9; box-shadow: 0 8px 24px rgba(0,0,0,0.04); overflow: hidden; display: flex; flex-direction: column; }
+  .dc-header { padding: 20px 24px; background: linear-gradient(to right, #FAFBFF, #FFFFFF); border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 800; color: #0F172A; }
+  .dc-header i { color: #3B82F6; font-size: 18px; }
+  .dc-body { padding: 24px; }
+
+  .info-alert { background: #EFF6FF; border-left: 4px solid #3B82F6; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #1E3A8A; margin-bottom: 18px; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 6px rgba(59,130,246,0.05); }
+  .info-alert.success { background: #ECFDF5; border-color: #10B981; color: #065F46; }
+
+  .detail-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .detail-title-row h4 { font-size: 18px; font-weight: 800; color: #0F172A; line-height: 1.4; }
+  .pri-badge { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; letter-spacing: 0.5px; }
+  .pri-badge.high { background: #FEE2E2; color: #DC2626; box-shadow: inset 0 0 0 1px rgba(220,38,38,0.2); }
+  .pri-badge.medium { background: #FEF3C7; color: #D97706; box-shadow: inset 0 0 0 1px rgba(217,119,6,0.2); }
+  .pri-badge.low { background: #D1FAE5; color: #059669; box-shadow: inset 0 0 0 1px rgba(5,150,105,0.2); }
+
+  .detail-meta { display: grid; grid-template-columns: 100px 1fr; gap-y: 12px; gap-x: 10px; font-size: 13px; margin-bottom: 20px; background: #FAFBFF; padding: 16px; border-radius: 12px; border: 1px solid #F1F5F9; }
+  .dm-label { color: #64748B; font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+  .dm-val { color: #0F172A; font-weight: 700; }
+
+  .msg-body { padding: 20px; background: #F8FAFC; border-radius: 12px; font-size: 14px; color: #334155; line-height: 1.8; margin-bottom: 20px; border: 1px solid #F1F5F9; box-shadow: inset 0 2px 4px rgba(0,0,0,0.01); }
+  .msg-body p { margin-bottom: 10px; }
+  .msg-body p:last-child { margin-bottom: 0; }
+
+  .delivery-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .dg-item { text-align: center; padding: 12px 8px; border-radius: 12px; border: 1px solid rgba(0,0,0,0.02); transition: 0.2s; }
+  .dg-item:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+  .dg-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 8px; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+  .dg-val { font-size: 18px; font-weight: 800; color: #0F172A; }
+  .dg-lbl { font-size: 10px; font-weight: 700; color: #64748B; letter-spacing: 0.5px; margin-top: 2px; text-transform: uppercase; }
+
+  .rate-row { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px; }
+  .rate-bar { height: 8px; background: #E2E8F0; border-radius: 4px; overflow: hidden; box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); }
+  .rate-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #10B981, #34D399); transition: width 0.8s ease-out; }
+
+  /* Compose form in right panel */
+  .compose-card .dc-body { display: flex; flex-direction: column; gap: 14px; }
+  .cmp-group label { display: block; font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 6px; letter-spacing: 0.3px; }
+  .cmp-group input, .cmp-group select, .cmp-group textarea { width: 100%; padding: 10px 12px; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; outline: none; transition: 0.2s; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02); }
+  .cmp-group input:focus, .cmp-group select:focus, .cmp-group textarea:focus { border-color: #3B82F6; box-shadow: 0 0 0 3px rgba(59,130,246,0.15); }
+  .cmp-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cmp-actions { display: flex; gap: 10px; margin-top: 10px; }
+  .btn-cmp-send { flex: 1; padding: 12px; background: linear-gradient(135deg, #1D4ED8, #3B82F6); color: white; border: none; border-radius: 8px; font-size: 13px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(59,130,246,0.25); transition: 0.2s; }
+  .btn-cmp-send:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-cmp-cancel { padding: 12px 18px; background: white; color: #475569; border: 1px solid #E2E8F0; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+  .btn-cmp-cancel:hover { background: #F8FAFC; border-color: #CBD5E1; }
+
+  .empty-detail { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; color: #94A3B8; text-align: center; }
+  .empty-detail i { font-size: 48px; margin-bottom: 16px; color: #CBD5E1; }
+  .empty-detail p { font-size: 15px; font-weight: 600; color: #64748B; }
+
+  .success-toast { display: none; position: fixed; top: 24px; right: 24px; background: #10B981; color: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 10px 25px rgba(16,185,129,0.3); font-weight: 700; font-size: 14px; z-index: 9999; align-items: center; gap: 10px; transform: translateY(-20px); opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+  .success-toast.show { display: flex; transform: translateY(0); opacity: 1; }
+  
+  /* Additional UI Polish */
+  .lc-tabs { display: flex; background: #F8FAFC; padding: 4px; border-radius: 10px; margin: 16px 20px; }
+  .lc-tab { flex: 1; text-align: center; padding: 10px; font-size: 13px; font-weight: 700; color: #64748B; border-radius: 8px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .lc-tab.active { background: white; color: #0F172A; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+  .lc-badge { padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 800; }
+  
+  .list-card { background: white; border-radius: 16px; border: 1px solid #F1F5F9; box-shadow: 0 4px 16px rgba(0,0,0,0.04); overflow: hidden; display: flex; flex-direction: column; flex: 1; }
+  .nt-grid { display: grid; grid-template-columns: 1fr 400px; gap: 24px; margin-bottom: 40px; }
+  
+  .nt-item { padding: 16px 24px; border-bottom: 1px solid #F1F5F9; cursor: pointer; transition: 0.2s; border-left: 3px solid transparent; }
+  .nt-item:hover { background: #FAFBFF; }
+  .nt-item.active { background: #EFF6FF; border-left-color: #3B82F6; }
+  .nt-item.unread .nt-title { color: #0F172A; font-weight: 800; }
+  
+  .nt-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .nt-title { font-size: 14px; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 8px; }
+  .nt-time { font-size: 11px; color: #94A3B8; font-weight: 600; }
+  .nt-desc { font-size: 13px; color: #64748B; margin-bottom: 10px; line-height: 1.5; }
+  .nt-meta { display: flex; gap: 10px; align-items: center; }
+  .nt-aud { font-size: 11px; color: #94A3B8; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+
+
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+
+  const App = () => {
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10;
+    const [notifications, setNotifications] = React.useState([]);
+    const [messages, setMessages] = React.useState([]);
+
+    const [activeTab, setActiveTab] = React.useState('notifications');
+    const [selectedId, setSelectedId] = React.useState(null);
+    const [typeFilter, setTypeFilter] = React.useState('All');
+    const [priFilter, setPriFilter] = React.useState('All');
+    const [statusFilter, setStatusFilter] = React.useState('All');
+    const [search, setSearch] = React.useState('');
+    const [toastMsg, setToastMsg] = React.useState('');
+    const [showToast, setShowToast] = React.useState(false);
+
+    React.useEffect(() => { setCurrentPage(1); }, [search, typeFilter, priFilter, statusFilter]);
+    
+    React.useEffect(() => {
+        if(window.supabaseClient) {
+            window.supabaseClient.from('notifications').select('*').order('created_at', {ascending: false}).then(({data, error}) => {
+                if(data) {
+                                        const mapped = data.map(d => {
+                        const title = d.title || 'No Title';
+                        const message = d.message || '';
+                        const type = d.type || 'General';
+                        const aud = d.audience || 'All Students';
+                        return {
+                            id: d.id, unread: false, title: title, desc: message.length > 50 ? message.substring(0, 50) + '...' : message, type: type, 
+                            pri: 'Medium', aud: aud, audCount: 1, 
+                            date: new Date(d.created_at).toLocaleDateString(), time: new Date(d.created_at).toLocaleTimeString(), 
+                            status: 'Delivered', msg: message
+                        };
+                    });
+                    setNotifications(mapped);
+                    if (mapped.length > 0 && !selectedId) {
+                        setSelectedId(mapped[0].id);
+                    }
+                }
+            });
+        }
+    }, []);
+
+        const handleDelete = async () => {
+        if (!selectedId) return;
+        if(window.supabaseClient) {
+            await window.supabaseClient.from('notifications').delete().eq('id', selectedId);
+        }
+        setNotifications(prev => prev.filter(n => n.id !== selectedId));
+        setSelectedId(null);
+        showSuccess('Notification deleted');
+    };
+
+    const showSuccess = (msg) => {
+      setToastMsg(msg);
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+    };
+
+    const data = activeTab === 'notifications' ? notifications : messages;
+
+    const filtered = data.filter(n => {
+      const matchType = typeFilter === 'All' || n.type === typeFilter;
+      const matchPri  = priFilter  === 'All' || n.pri  === priFilter;
+      const matchSt   = statusFilter === 'All' || n.status === statusFilter;
+      const q = search.toLowerCase();
+            const matchSearch = !q || (n.title && n.title.toLowerCase().includes(q)) || (n.desc && n.desc.toLowerCase().includes(q)) || (n.aud && n.aud.toLowerCase().includes(q));
+      return matchType && matchPri && matchSt && matchSearch;
+    });
+
+    const selected = data.find(n => n.id === selectedId) || null;
+
+    const clearFilters = () => { setTypeFilter('All'); setPriFilter('All'); setStatusFilter('All'); setSearch(''); };
+    const hasFilters = typeFilter !== 'All' || priFilter !== 'All' || statusFilter !== 'All' || search !== '';
+
+    const typeClass = { General:'badge-general', Fee:'badge-fee', Maintenance:'badge-maintenance', Complaint:'badge-complaint' };
+    const priClass  = { Low:'pri-low', Medium:'pri-medium', High:'pri-high' };
+    const stClass   = { Delivered:'st-delivered', Read:'st-read', Sent:'st-sent' };
+
+    const stats = [
+      { title:'Total', val: data.length.toString(), sub:'This Period', icon:'fa-bell',          bg:'#EFF6FF', c:'#3B82F6' },
+      { title:'Sent',  val: data.length.toString(),   sub:'100%',     icon:'fa-paper-plane', bg:'#ECFDF5', c:'#10B981' },
+      { title:'Delivered', val: data.length.toString(), sub:'100%',   icon:'fa-envelope',    bg:'#FFFBEB', c:'#F59E0B' },
+      { title:'Read',  val:'0',   sub:'0%',     icon:'fa-eye',         bg:'#F5F3FF', c:'#8B5CF6' },
+      { title:'Unread',val: data.filter(n=>n.unread).length.toString(), sub:'Pending', icon:'fa-envelope-open', bg:'#FEF2F2', c:'#EF4444' },
+    ];
+    
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    const currentItems = filtered.slice(indexOfFirst, indexOfLast);
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+    return (
+      <Layout activeMenu="Notifications" title="Notifications & Messages" breadcrumb="Notifications">
+        <div className={`success-toast ${showToast ? 'show' : ''}`}>
+          <i className="fas fa-check-circle"></i> {toastMsg}
+        </div>
+
+        <div className="stats-row">
+          {stats.map((s,i) => (
+            <div className="stat-card-nt" key={i}>
+              <div className="stat-icon-nt" style={{background:s.bg, color:s.c}}><i className={`fas ${s.icon}`}></i></div>
+              <div className="stat-info-nt">
+                <span className="s-title">{s.title}</span>
+                <span className="s-val">{s.val}</span>
+                <span className="s-sub">{s.sub}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="nt-grid">
+          <div className="nt-left">
+            <div className="list-card">
+              <div className="lc-header">
+                <div className="lc-tabs">
+                  <div className={`lc-tab ${activeTab==='notifications'?'active':''}`} onClick={() => { setActiveTab('notifications'); setTypeFilter('All'); setSelectedId(null); }}>
+                    Notifications <span className="lc-badge" style={{background:'#DBEAFE',color:'#1D4ED8'}}>{notifications.length}</span>
+                  </div>
+                  <div className={`lc-tab ${activeTab==='messages'?'active':''}`} onClick={() => { setActiveTab('messages'); setTypeFilter('All'); setSelectedId(null); }}>
+                    Student Messages <span className="lc-badge" style={{background:'#FEF3C7',color:'#D97706'}}>{messages.length}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lc-filters">
+                <div className="search-box">
+                  <i className="fas fa-search"></i>
+                  <input type="text" placeholder="Search by title, target..." value={search} onChange={e=>setSearch(e.target.value)} />
+                </div>
+                <div className="filter-group">
+                  <select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}>
+                    <option value="All">All Types</option>
+                    <option value="Announcement">Announcement</option>
+                    <option value="Fee Reminder">Fee Reminder</option>
+                    <option value="Maintenance Alert">Maintenance Alert</option>
+                    <option value="Event">Event</option>
+                    <option value="General">General</option>
+                  </select>
+                  <select value={priFilter} onChange={e=>setPriFilter(e.target.value)}>
+                    <option value="All">All Priorities</option>
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                  </select>
+                </div>
+                {hasFilters && <div className="clear-filters" onClick={clearFilters}>Clear Filters</div>}
+              </div>
+
+              <div className="lc-body">
+                {currentItems.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon"><i className="fas fa-inbox"></i></div>
+                    <div className="empty-text">No {activeTab} found matching your filters.</div>
+                  </div>
+                ) : (
+                  currentItems.map(n => (
+                    <div key={n.id} className={`nt-item ${selectedId === n.id ? 'active' : ''} ${n.unread ? 'unread' : ''}`} onClick={() => setSelectedId(n.id)}>
+                      <div className="nt-top">
+                        <div className="nt-title">
+                          {n.unread && <span className="unread-dot"></span>}
+                          {n.title}
+                        </div>
+                        <div className="nt-time">{n.date}</div>
+                      </div>
+                      <div className="nt-desc">{n.desc}</div>
+                      <div className="nt-meta">
+                        <span className={`badge ${typeClass[n.type] || 'badge-general'}`}>{n.type}</span>
+                        <span className={`badge ${priClass[n.pri] || 'pri-low'}`}>{n.pri}</span>
+                        <span className="nt-aud"><i className="fas fa-user-friends"></i> {n.aud}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="pagination">
+                  <div className="page-info">Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length}</div>
+                  <div className="page-btns">
+                    <button className="btn-page" disabled={currentPage === 1} onClick={() => setCurrentPage(p=>p-1)}><i className="fas fa-chevron-left"></i></button>
+                    {Array.from({length: totalPages}, (_,i) => (
+                      <button key={i+1} className={`btn-page ${currentPage === i+1 ? 'active' : ''}`} onClick={() => setCurrentPage(i+1)}>{i+1}</button>
+                    ))}
+                    <button className="btn-page" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p=>p+1)}><i className="fas fa-chevron-right"></i></button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="nt-right">
+            {selected ? (
+              <div className="detail-card">
+                <div className="dc-header">
+                  <div>
+                    <h3 className="dc-title">{selected.title}</h3>
+                    <div className="dc-meta">
+                      <span className={`badge ${typeClass[selected.type] || 'badge-general'}`}>{selected.type}</span>
+                      <span className={`badge ${priClass[selected.pri] || 'pri-medium'}`} style={{marginLeft:'8px'}}>{selected.pri} Priority</span>
+                    </div>
+                  </div>
+                  <button className="btn-action" title="Delete" onClick={handleDelete}><i className="fas fa-trash-alt"></i></button>
+                </div>
+                
+                <div className="dc-body">
+                  <div className="detail-meta">
+                    <div className="dm-item"><div className="dm-label">Date & Time</div><div className="dm-val">{selected.date}, {selected.time}</div></div>
+                    <div className="dm-item"><div className="dm-label">Target Audience</div><div className="dm-val">{selected.aud}</div></div>
+                    <div className="dm-item"><div className="dm-label">Status</div><div className="dm-val"><span className={`badge ${stClass[selected.status] || 'st-sent'}`}>{selected.status}</span></div></div>
+                  </div>
+
+                  <div className="msg-body">
+                    {selected.msg.split('\n').map((line, i) => (
+                      <React.Fragment key={i}>
+                        {line}
+                        {i < selected.msg.split('\n').length - 1 && <br />}
+                      </React.Fragment>
+                    ))}
+                  </div>
+
+                  <div style={{fontSize:'13px', fontWeight:700, color:'#0F172A', marginBottom:'12px', marginTop:'24px'}}>Delivery Analytics</div>
+                  <div className="delivery-grid">
+                    <div className="dg-item" style={{background:'#EFF6FF'}}>
+                      <div className="dg-icon" style={{background:'#DBEAFE', color:'#3B82F6'}}><i className="fas fa-users"></i></div>
+                      <div className="dg-val">{selected.audCount}</div><div className="dg-lbl">TARGETED</div>
+                    </div>
+                    <div className="dg-item" style={{background:'#F5F3FF'}}>
+                      <div className="dg-icon" style={{background:'#EDE9FE', color:'#8B5CF6'}}><i className="fas fa-paper-plane"></i></div>
+                      <div className="dg-val">{selected.audCount}</div><div className="dg-lbl">SENT</div>
+                    </div>
+                    <div className="dg-item" style={{background:'#ECFDF5'}}>
+                      <div className="dg-icon" style={{background:'#D1FAE5', color:'#10B981'}}><i className="fas fa-envelope"></i></div>
+                      <div className="dg-val">{selected.audCount}</div><div className="dg-lbl">DELIVERED</div>
+                    </div>
+                    <div className="dg-item" style={{background:'#FFFBEB'}}>
+                      <div className="dg-icon" style={{background:'#FEF3C7', color:'#F59E0B'}}><i className="fas fa-eye"></i></div>
+                      <div className="dg-val">0</div><div className="dg-lbl">READ</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="detail-card">
+                <div className="empty-detail">
+                  <i className="fas fa-envelope-open-text"></i>
+                  <p>Select a {activeTab.slice(0,-1)} to view details</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </Layout>
+    );
+  };
+
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

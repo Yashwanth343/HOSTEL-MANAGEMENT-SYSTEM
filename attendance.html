@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Attendance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+  /* ── KPI top row ── */
+  .att-kpi4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+  .ak-card  { background:white; border-radius:12px; border:1px solid #F1F5F9; padding:18px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 6px rgba(0,0,0,0.04); }
+  .ak-ico   { width:54px; height:54px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:24px; flex-shrink:0; }
+  .ak-val   { font-size:26px; font-weight:800; color:#0F172A; }
+  .ak-label { font-size:12px; font-weight:600; color:#64748B; }
+  .ak-sub   { font-size:11px; color:#94A3B8; }
+
+  /* ── Two-column layout ── */
+  .att-layout { display:grid; grid-template-columns:1fr 300px; gap:20px; }
+
+  /* ── Attendance Table Card ── */
+  .tbl-card { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:20px; }
+  .tbl-head { display:flex; align-items:center; gap:12px; margin-bottom:18px; flex-wrap:wrap; }
+  .tbl-head h3 { font-size:15px; font-weight:700; color:#0F172A; flex:0 0 auto; margin-right:8px; }
+  .tbl-head select { padding:7px 12px; border:1px solid #E2E8F0; border-radius:8px; font-size:12px; color:#475569; outline:none; }
+  .tbl-head input  { padding:7px 12px; border:1px solid #E2E8F0; border-radius:8px; font-size:12px; color:#475569; outline:none; }
+  .btn-mark { margin-left:auto; padding:8px 18px; background:#1D4ED8; color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:7px; }
+
+  table { width:100%; border-collapse:collapse; }
+  th { font-size:11px; font-weight:700; color:#94A3B8; padding:10px; border-bottom:2px solid #F1F5F9; text-align:left; letter-spacing:0.4px; }
+  td { font-size:13px; padding:11px 10px; border-bottom:1px solid #F8FAFC; color:#475569; font-weight:500; vertical-align:middle; }
+  tr:last-child td { border-bottom:none; }
+  .badge-present { background:#D1FAE5; color:#059669; padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; }
+  .badge-absent  { background:#FEE2E2; color:#EF4444; padding:3px 12px; border-radius:20px; font-size:11px; font-weight:700; }
+
+  .pagination { display:flex; justify-content:space-between; align-items:center; padding-top:14px; border-top:1px solid #F1F5F9; margin-top:12px; }
+  .pg-info { font-size:12px; color:#64748B; }
+  .pg-btns { display:flex; gap:4px; }
+  .pg-btn  { width:30px; height:30px; display:flex; align-items:center; justify-content:center; border:1px solid #E2E8F0; border-radius:6px; background:white; font-size:12px; font-weight:600; color:#475569; cursor:pointer; }
+  .pg-btn.active { background:#1D4ED8; color:white; border-color:#1D4ED8; }
+
+  /* ── Right Sidebar ── */
+  .att-sidebar { display:flex; flex-direction:column; gap:16px; }
+  .sidebar-card { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:18px; }
+  .sc-title { font-size:14px; font-weight:700; color:#0F172A; margin-bottom:14px; }
+  .sidebar-card select { width:100%; padding:9px 12px; border:1px solid #E2E8F0; border-radius:8px; font-size:13px; color:#475569; outline:none; margin-bottom:10px; background:white; }
+  .btn-apply { width:100%; padding:10px; background:#1D4ED8; color:white; border:none; border-radius:8px; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+
+  /* Donut */
+  .donut-wrap { position:relative; width:130px; height:130px; margin:0 auto 14px; }
+  .dc-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+  .dc-val { font-size:16px; font-weight:800; color:#0F172A; }
+  .dc-sub { font-size:10px; color:#64748B; }
+  .att-legend { display:flex; flex-direction:column; gap:6px; }
+  .al-row { display:flex; justify-content:space-between; font-size:12px; }
+  .al-l { display:flex; align-items:center; gap:6px; font-weight:600; color:#475569; }
+  .al-dot { width:10px; height:10px; border-radius:50%; }
+  .al-r { font-weight:700; color:#0F172A; }
+
+  /* Quick Actions */
+  .qa-item { display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:700; margin-bottom:6px; text-decoration:none; }
+  .qa-item:hover { opacity:0.85; }
+
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+  const STUDENTS = [
+    { roll:'CS2021001', name:'Rahul Sharma',  dept:'Computer Science',  year:'3rd Year', room:'A-101', status:'Present' },
+    { roll:'CS2021002', name:'Priya Verma',   dept:'Computer Science',  year:'3rd Year', room:'A-102', status:'Absent'  },
+    { roll:'ME2021003', name:'Aman Kumar',    dept:'Mechanical Engg.',  year:'2nd Year', room:'B-201', status:'Present' },
+    { roll:'EC2021004', name:'Sneha Patel',   dept:'Electronics Engg.', year:'2nd Year', room:'B-202', status:'Present' },
+    { roll:'CE2021005', name:'Vikram Singh',  dept:'Civil Engineering', year:'4th Year', room:'C-301', status:'Absent'  },
+    { roll:'IT2021006', name:'Neha Gupta',    dept:'Information Tech.', year:'3rd Year', room:'A-103', status:'Present' },
+    { roll:'EE2021007', name:'Rohit Mehta',   dept:'Electrical Engg.',  year:'2nd Year', room:'B-203', status:'Present' },
+    { roll:'CS2021008', name:'Anjali Singh',  dept:'Computer Science',  year:'3rd Year', room:'A-104', status:'Absent'  },
+    { roll:'ME2021009', name:'Mohit Agarwal', dept:'Mechanical Engg.',  year:'4th Year', room:'C-302', status:'Present' },
+    { roll:'EC2021010', name:'Kavya Jain',    dept:'Electronics Engg.', year:'2nd Year', room:'B-204', status:'Present' },
+  ];
+
+  const App = () => {
+    const [currentPage, setCurrentPage] = React.useState(1);
+    const itemsPerPage = 10;
+
+    React.useEffect(() => { setCurrentPage(1); }, [dept, year, room]);
+    const [dept, setDept]     = React.useState('All Departments');
+    const [year, setYear]     = React.useState('');
+    const [room, setRoom]     = React.useState('');
+    const [filtered, setFiltered] = React.useState(STUDENTS);
+
+    React.useEffect(() => {
+      const el = document.getElementById('attSummaryDonut');
+      if (!el) return;
+      const ex = Chart.getChart(el); if (ex) ex.destroy();
+      new Chart(el, {
+        type:'doughnut',
+        data:{ labels:['Present','Absent'], datasets:[{ data:[210,46], backgroundColor:['#10B981','#EF4444'], borderWidth:3, cutout:'72%' }] },
+        options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } }
+      });
+    }, []);
+
+    const applyFilters = () => {
+      setFiltered(STUDENTS.filter(s =>
+        (dept === 'All Departments' || s.dept === dept) &&
+        (!year || s.year === year) &&
+        (!room || s.room === room)
+      ));
+    };
+
+    
+    const indexOfLast = currentPage * itemsPerPage;
+    const indexOfFirst = indexOfLast - itemsPerPage;
+    const currentItems = filtered.slice(indexOfFirst, indexOfLast);
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+return (
+      <Layout activeMenu="Attendance" activeSub="Mark Attendance" title="Attendance" breadcrumb="Dashboard > Attendance">
+
+        {/* KPI row */}
+        <div className="att-kpi4">
+          {[
+            { ico:'fa-user-friends', bg:'#EFF6FF', c:'#3B82F6', val:'256',          label:'Total Students',  sub:'All Students' },
+            { ico:'fa-check-circle', bg:'#ECFDF5', c:'#10B981', val:'210',          label:'Present Today',   sub:'82.03%' },
+            { ico:'fa-user-times',   bg:'#FFF7ED', c:'#F97316', val:'46',           label:'Absent Today',    sub:'17.97%' },
+            { ico:'fa-calendar-alt', bg:'#F5F3FF', c:'#8B5CF6', val:'24 May 2024', label:'Attendance Date', sub:'Friday' },
+          ].map((k,i)=>(
+            <div className="ak-card" key={i}>
+              <div className="ak-ico" style={{background:k.bg, color:k.c}}><i className={`fas ${k.ico}`}></i></div>
+              <div><div className="ak-val">{k.val}</div><div className="ak-label">{k.label}</div><div className="ak-sub">{k.sub}</div></div>
+            </div>
+          ))}
+        </div>
+
+        <div className="att-layout">
+          {/* Student table */}
+          <div className="tbl-card">
+            <div className="tbl-head">
+              <h3>Student Attendance</h3>
+              <select value={dept} onChange={e=>setDept(e.target.value)}>
+                <option>All Departments</option><option>Computer Science</option><option>Mechanical Engg.</option>
+                <option>Electronics Engg.</option><option>Civil Engineering</option><option>Information Tech.</option><option>Electrical Engg.</option>
+              </select>
+              <input type="date" defaultValue="2024-05-24" />
+              <button className="btn-mark" style={{background:'#10B981', marginLeft:'auto'}} onClick={() => {
+                  let csv = 'Roll No.,Name,Department,Year,Room No.,Status\n';
+                  filtered.forEach(s => csv += `${s.roll},${s.name},${s.dept},${s.year},${s.room},${s.status}\n`);
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'attendance.csv';
+                  a.click();
+              }}><i className="fas fa-file-excel"></i> Export to Excel</button>
+              <a href="mark-attendance.html" className="btn-mark" style={{marginLeft:'10px'}}><i className="fas fa-edit"></i> Mark Attendance</a>
+            </div>
+            <table>
+              <thead>
+                <tr><th>#</th><th>Roll No.</th><th>Name</th><th>Department</th><th>Year</th><th>Room No.</th><th>Status</th></tr>
+              </thead>
+              <tbody>
+                {currentItems.map((s,i)=>(
+                  <tr key={s.roll}>
+                    <td style={{color:'#94A3B8'}}>{i+1}</td>
+                    <td style={{fontWeight:700, color:'#0F172A', fontSize:'12px'}}>{s.roll}</td>
+                    <td style={{fontWeight:600, color:'#0F172A'}}>{s.name}</td>
+                    <td>{s.dept}</td>
+                    <td>{s.year}</td>
+                    <td><span style={{background:'#F1F5F9', padding:'2px 8px', borderRadius:'4px', fontSize:'11px', fontWeight:700}}>{s.room}</span></td>
+                    <td><span className={s.status==='Present'?'badge-present':'badge-absent'}>{s.status}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="pagination" style={{padding: '0 16px 16px', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', borderTop: 'none', marginTop: '0'}}>
+            <div style={{display: 'flex', gap: '6px', marginBottom: '12px'}}>
+              <button className="page-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              {[...Array(Math.min(totalPages, 8)).keys()].map(p => {
+                let pageNum = p + 1;
+                if (totalPages > 8 && currentPage > 4 && p < 7) {
+                  pageNum = currentPage - 3 + p;
+                  if (pageNum > totalPages) return null;
+                }
+                if (pageNum <= totalPages) {
+                  return (
+                    <button key={pageNum} className={`page-btn ${currentPage === pageNum ? 'active-page' : ''}`} onClick={() => setCurrentPage(pageNum)} style={currentPage === pageNum ? {background: 'var(--primary)', color: 'white', borderColor: 'var(--primary)'} : {}}>
+                      {pageNum}
+                    </button>
+                  );
+                }
+                return null;
+              })}
+              {totalPages > 8 && currentPage < totalPages - 3 && <span className="page-btn" style={{border:'none'}}>...</span>}
+              {totalPages > 8 && currentPage < totalPages - 2 && (
+                <button className="page-btn" onClick={() => setCurrentPage(totalPages)}>{totalPages}</button>
+              )}
+              <button className="page-btn" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>»</button>
+            </div>
+            <div style={{fontSize:'12px', color:'var(--text-muted)'}}>
+              Showing {indexOfFirst+1} to {Math.min(indexOfLast, filtered.length)} of {filtered.length} records
+            </div>
+          </div>
+          </div>
+
+          {/* Right sidebar */}
+          <div className="att-sidebar">
+            {/* Filters */}
+            <div className="sidebar-card">
+              <div className="sc-title">Filters</div>
+              <select value={dept} onChange={e=>setDept(e.target.value)}>
+                <option>All Departments</option><option>Computer Science</option><option>Mechanical Engg.</option>
+                <option>Electronics Engg.</option><option>Civil Engineering</option><option>Information Tech.</option>
+              </select>
+              <select value={year} onChange={e=>setYear(e.target.value)}>
+                <option value="">Select Year</option><option>1st Year</option><option>2nd Year</option><option>3rd Year</option><option>4th Year</option>
+              </select>
+              <select value={room} onChange={e=>setRoom(e.target.value)}>
+                <option value="">Select Room</option>
+                <option>A-101</option><option>A-102</option><option>B-201</option><option>B-202</option><option>C-301</option>
+              </select>
+              <button className="btn-apply" onClick={applyFilters}><i className="fas fa-filter"></i> Apply Filters</button>
+            </div>
+
+            {/* Donut summary */}
+            <div className="sidebar-card">
+              <div className="sc-title">Attendance Summary (24 May 2024)</div>
+              <div className="donut-wrap">
+                <canvas id="attSummaryDonut"></canvas>
+                <div className="dc-center"><div className="dc-val">82.03%</div><div className="dc-sub">Present</div></div>
+              </div>
+              <div className="att-legend">
+                <div className="al-row"><div className="al-l"><div className="al-dot" style={{background:'#10B981'}}></div>Present</div><div className="al-r">210</div></div>
+                <div className="al-row"><div className="al-l"><div className="al-dot" style={{background:'#EF4444'}}></div>Absent</div><div className="al-r">46</div></div>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="sidebar-card">
+              <div className="sc-title">Quick Actions</div>
+              <a href="attendence_report.html" className="qa-item" style={{background:'#EFF6FF', color:'#1D4ED8'}}>
+                <i className="fas fa-file-alt"></i> Attendance Report
+              </a>
+              <a href="#" className="qa-item" style={{background:'#ECFDF5', color:'#059669'}} onClick={()=>{alert('Exporting to Excel...')}}>
+                <i className="fas fa-file-excel"></i> Export to Excel
+              </a>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  };
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

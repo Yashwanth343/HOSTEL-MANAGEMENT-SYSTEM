@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Portal | Download Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  
+  <style>
+
+    :root {
+      --primary: #1F8A43; /* Green theme for students */
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #156A32;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; color: var(--primary); }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(31,138,67,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+.report-section { background: var(--white); border-radius: 12px; border: 1px solid var(--border-color); padding: 24px; margin-bottom: 24px; }
+.report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border-color); }
+.report-header h3 { margin: 0; font-size: 18px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+.report-header h3 i { color: var(--primary); }
+.badge-term { background: #E0F2FE; color: #0284C7; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.table-reports { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.table-reports th, .table-reports td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 14px; }
+.table-reports th { background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+.status-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-block; }
+.status-paid { background: #DCFCE7; color: #166534; }
+.status-unpaid { background: #FEE2E2; color: #991B1B; }
+.total-row td { background: #F8FAFC; font-weight: 700; color: var(--text-main); font-size: 15px; border-bottom: none; }
+.download-btn { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+.download-btn:hover { background: var(--sidebar-hover); transform: translateY(-2px); }
+
+.heatmap-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; max-width: 300px; margin-bottom: 16px; }
+.hm-cell { width: 100%; aspect-ratio: 1; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 600; color: transparent; cursor: pointer; transition: 0.2s; }
+.hm-cell:hover { transform: scale(1.1); color: rgba(255,255,255,0.8); }
+.hm-present { background: #22C55E; }
+.hm-absent { background: #EF4444; }
+.hm-leave { background: #F59E0B; }
+.hm-empty { background: transparent; pointer-events: none; }
+.month-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--text-main); }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'student_dashboard.html' },
+        { id: 'My Profile', icon: 'fa-user', label: 'My Profile', link: 'student_profile.html' },
+        { id: 'My Room', icon: 'fa-bed', label: 'My Room', link: 'student_room.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', link: 'student_attendance.html' },
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees History', link: 'student_fees.html' },
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', link: 'student_complaints.html' },
+        { id: 'Reports', icon: 'fa-file-pdf', label: 'Reports', link: 'student_reports.html' },
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 2, link: 'student_notifications.html' },
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'student_settings_general.html'},
+            {id: 'Academic', link: 'student_settings_academic.html'},
+            {id: 'Notification', link: 'student_settings_notification.html'},
+            {id: 'Security', link: 'student_settings_security.html'},
+            {id: 'Backup', link: 'student_settings_backup.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-graduation-cap"></i>
+            <div>
+              <h2>STUDENT</h2>
+              <p>PORTAL</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="student_logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Student',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.roll_number || 'CS2021001'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='student_notifications.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1F8A43&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1F8A43&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#DCFCE7', color:'#166534', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'student_profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'student_settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'student_settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'student') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Student Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+const HeatmapMonth = ({ title, offset, days, absentDays }) => {
+  const cells = [];
+  for(let i=0; i<offset; i++) cells.push(<div key={`empty-${i}`} className="hm-cell hm-empty"></div>);
+  for(let i=1; i<=days; i++) {
+    const isAbsent = absentDays.includes(i);
+    cells.push(<div key={`day-${i}`} className={`hm-cell ${isAbsent ? 'hm-absent' : 'hm-present'}`} title={isAbsent ? 'Absent' : 'Present'}>{i}</div>);
+  }
+  return (
+    <div>
+      <div className="month-title">{title}</div>
+      <div className="heatmap-grid">{cells}</div>
+    </div>
+  );
+};
+
+const App = () => {
+return (
+    <Layout activeMenu="Reports" activeSub={null} title="My Reports" breadcrumb="Student Portal > Reports">
+      
+      {/* Fee Statement */}
+      <div className="report-section">
+        <div className="report-header">
+          <h3><i className="fas fa-file-invoice-dollar"></i> Fee Statement Preview</h3>
+          <span className="badge-term">Academic Year 2023-24</span>
+        </div>
+        
+        <table className="table-reports">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Transaction Detail</th>
+              <th>Mode</th>
+              <th>Status</th>
+              <th style={{textAlign: 'right'}}>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>15-Aug-2023</td>
+              <td>Hostel Allocation Fee (Term 1)</td>
+              <td>Net Banking</td>
+              <td><span className="status-badge status-paid">PAID</span></td>
+              <td style={{textAlign: 'right'}}>₹25,000</td>
+            </tr>
+            <tr>
+              <td>02-Sep-2023</td>
+              <td>Mess Advance</td>
+              <td>UPI</td>
+              <td><span className="status-badge status-paid">PAID</span></td>
+              <td style={{textAlign: 'right'}}>₹15,000</td>
+            </tr>
+            <tr>
+              <td>05-Jan-2024</td>
+              <td>Hostel Fee (Term 2)</td>
+              <td>Pending</td>
+              <td><span className="status-badge status-unpaid">UNPAID</span></td>
+              <td style={{textAlign: 'right', color: 'var(--danger)', fontWeight: 600}}>₹20,000</td>
+            </tr>
+            <tr className="total-row">
+              <td colSpan="4" style={{textAlign: 'right', color: 'var(--primary)'}}>Total Paid:</td>
+              <td style={{textAlign: 'right', color: 'var(--primary)'}}>₹40,000</td>
+            </tr>
+          </tbody>
+        </table>
+        <div style={{textAlign: 'right'}}>
+          <button type="button" className="download-btn" onClick={() => {
+            const content = `Hostel Management System\n\nFEE STATEMENT PREVIEW (Academic Year 2023-24)\n\n15-Aug-2023 | Hostel Allocation Fee (Term 1) | Net Banking | PAID | ₹25,000\n02-Sep-2023 | Mess Advance | UPI | PAID | ₹15,000\n05-Jan-2024 | Hostel Fee (Term 2) | Pending | UNPAID | ₹20,000\n\nTotal Paid: ₹40,000`;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Fee_Statement_2023-24.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}><i className="fas fa-download"></i> Download Fee PDF</button>
+        </div>
+      </div>
+
+      {/* Attendance Breakdown */}
+      <div className="report-section">
+        <div className="report-header">
+          <h3><i className="fas fa-calendar-check"></i> Attendance Breakdown (Last 3 Months)</h3>
+          <div style={{display: 'flex', gap: '16px', fontSize: '13px', fontWeight: 500}}>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}><span className="legend-dot hm-present"></span> Present</div>
+            <div style={{display: 'flex', alignItems: 'center', gap: '6px'}}><span className="legend-dot hm-absent"></span> Absent</div>
+          </div>
+        </div>
+        
+        <div style={{display: 'flex', gap: '48px', flexWrap: 'wrap', marginBottom: '24px'}}>
+          <HeatmapMonth title="November 2023" offset={3} days={30} absentDays={[5, 12]} />
+          <HeatmapMonth title="December 2023" offset={5} days={31} absentDays={[10, 11, 24, 25]} />
+          <HeatmapMonth title="January 2024" offset={1} days={31} absentDays={[3]} />
+        </div>
+        
+        <div style={{textAlign: 'right', borderTop: '1px solid var(--border-color)', paddingTop: '20px'}}>
+          <button type="button" className="download-btn" onClick={() => {
+            const content = `Hostel Management System\n\nATTENDANCE BREAKDOWN (Last 3 Months)\n\nNovember 2023: 28 Present, 2 Absent\nDecember 2023: 27 Present, 4 Absent\nJanuary 2024: 30 Present, 1 Absent\n\nTotal Attendance: 85%`;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Attendance_Report_3Months.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }}><i className="fas fa-download"></i> Download Attendance PDF</button>
+        </div>
+      </div>
+
+    </Layout>
+  );
+};
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

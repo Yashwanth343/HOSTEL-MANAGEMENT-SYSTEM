@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Fees Management</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden;
+      transition: 0.2s;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+    }
+    
+    .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .stat-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text-main);
+      margin-bottom: 4px;
+    }
+    
+    .stat-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .add-section { background: white; border-radius: 12px; padding: 24px; margin-bottom: 24px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+    .form-title { font-weight: 700; font-size: 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; color: var(--text-main); }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    .input-field label { font-size: 13px; font-weight: 600; color: var(--text-main); display: block; margin-bottom: 8px; }
+    .input-field input, .input-field select, .input-field textarea { width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 13px; background: #F8FAFC; outline: none; transition: 0.2s; }
+    .input-field input:focus, .input-field select:focus, .input-field textarea:focus { border-color: var(--primary); background: #fff; }
+    
+    .radio-group { display: flex; gap: 16px; margin-top: 8px; flex-wrap: wrap; }
+    .radio-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-main); }
+    
+    .btn-primary { background: var(--primary); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; margin-top: 20px; cursor: pointer; transition: 0.2s; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-primary:hover { background: var(--sidebar-hover); }
+
+    .status-overview { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 24px; }
+    .status-chip { background: white; border-radius: 12px; padding: 16px 20px; display: flex; align-items: center; gap: 16px; border: 1px solid var(--border-color); flex: 1; min-width: 160px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); }
+    .status-color { width: 12px; height: 12px; border-radius: 50%; }
+    .status-chip .label { font-weight: 600; color: var(--text-muted); font-size: 12px; }
+    .status-chip .count { font-weight: 800; font-size: 20px; color: var(--text-main); }
+    .status-chip .percent { font-size: 11px; color: var(--text-muted); font-weight: 600; margin-left: 8px; }
+
+    .table-container { overflow-x: auto; background: white; border-radius: 12px; border: 1px solid var(--border-color); margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+    th { background: #F8FAFC; font-weight: 600; color: var(--text-muted); }
+    
+    .badge-paid { background: #ECFDF5; color: #10B981; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; display: inline-block; }
+    .badge-partial { background: #FFF7ED; color: #F59E0B; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; display: inline-block; }
+    .badge-pending { background: #FEF2F2; color: #EF4444; padding: 4px 10px; border-radius: 6px; font-weight: 700; font-size: 11px; display: inline-block; }
+    
+    .action-icons i { margin: 0 6px; cursor: pointer; color: var(--primary); font-size: 14px; transition: 0.2s; }
+    .action-icons i:hover { color: var(--sidebar-hover); }
+    
+    .pagination { display: flex; justify-content: flex-end; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+    .page-btn { background: white; border: 1px solid var(--border-color); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; color: var(--text-muted); transition: 0.2s; }
+    .page-btn:hover { background: #F1F5F9; }
+    .page-btn.active-page { background: var(--primary); color: white; border-color: var(--primary); }
+
+    .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+    .modal-content { background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; }
+    .modal-header h3 { font-size: 16px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; gap: 8px; margin: 0; }
+    .close-modal { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); line-height: 1; }
+    .fee-detail-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #F8FAFC; font-size: 13px; }
+    .fee-detail-label { font-weight: 600; color: var(--text-muted); }
+    .fee-detail-value { font-weight: 700; color: var(--text-main); }
+    
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+    const App = () => {
+      const [feeData, setFeeData] = React.useState([]);
+      const [loading, setLoading] = React.useState(true);
+      const [currentPage, setCurrentPage] = React.useState(1);
+      const [selectedStudent, setSelectedStudent] = React.useState(null);
+      const [paymentAmount, setPaymentAmount] = React.useState('');
+      const [paymentMode, setPaymentMode] = React.useState('Cash');
+      const [remarks, setRemarks] = React.useState('');
+      const [viewModalStudent, setViewModalStudent] = React.useState(null);
+      const [editingRow, setEditingRow] = React.useState(null);
+      const [editFormData, setEditFormData] = React.useState({});
+
+      React.useEffect(() => { fetchFees(); }, []);
+
+      const fetchFees = async () => {
+        if (!window.supabaseClient) return;
+        setLoading(true);
+        // Fetch students and their fee records
+        const { data: studentsData, error } = await window.supabaseClient.from('students').select('id, full_name, roll_number, department, fees(*)').order('full_name');
+        
+        if (studentsData) {
+          const mapped = studentsData.map(s => {
+            const feeRecord = s.fees && s.fees.length > 0 ? s.fees[0] : null;
+            return {
+              id: s.id,
+              studentName: s.full_name,
+              rollNumber: s.roll_number,
+              department: s.department || 'N/A',
+              fee_id: feeRecord ? feeRecord.id : null,
+              totalFee: feeRecord ? parseFloat(feeRecord.total_fee) : 60000,
+              paid: feeRecord ? parseFloat(feeRecord.paid_amount) : 0,
+              due: feeRecord ? (parseFloat(feeRecord.total_fee) - parseFloat(feeRecord.paid_amount)) : 60000,
+              status: feeRecord ? feeRecord.status : 'Pending',
+              lastPayment: feeRecord && feeRecord.last_payment_date ? feeRecord.last_payment_date : '-',
+              paymentMode: feeRecord && feeRecord.payment_mode ? feeRecord.payment_mode : '-'
+            };
+          });
+          setFeeData(mapped);
+        }
+        setLoading(false);
+      };
+      
+      const handleSaveInline = () => {
+        const updatedData = feeData.map(s => {
+          if (s.id === editingRow) {
+            const newPaid = parseFloat(editFormData.paid) || 0;
+            const newTotal = parseFloat(editFormData.totalFee) || 0;
+            const newDue = Math.max(0, newTotal - newPaid);
+            let newStatus = 'Partial';
+            if (newDue <= 0) newStatus = 'Paid';
+            else if (newPaid === 0) newStatus = 'Pending';
+            return {
+              ...s,
+              totalFee: newTotal,
+              paid: newPaid,
+              due: newDue,
+              status: newStatus,
+              lastPayment: editFormData.lastPayment,
+              paymentMode: editFormData.paymentMode
+            };
+          }
+          return s;
+        });
+        setFeeData(updatedData);
+        setEditingRow(null);
+      };
+
+      const itemsPerPage = 10;
+
+      // Stats calculations
+      const totalStudents = feeData.length;
+      const totalFeeDueSum = feeData.reduce((sum, s) => sum + s.due, 0);
+      const amountCollected = feeData.reduce((sum, s) => sum + s.paid, 0);
+      const pendingAmount = totalFeeDueSum;
+      
+      const paidCount = feeData.filter(s => s.status === 'Paid').length;
+      const partialCount = feeData.filter(s => s.status === 'Partial').length;
+      const pendingCount = feeData.filter(s => s.status === 'Pending').length;
+      const exemptedCount = 56;
+      
+      const paidPercent = ((paidCount / totalStudents) * 100).toFixed(1);
+      const partialPercent = ((partialCount / totalStudents) * 100).toFixed(1);
+      const pendingPercent = ((pendingCount / totalStudents) * 100).toFixed(1);
+      const exemptedPercent = ((exemptedCount / (totalStudents + exemptedCount)) * 100).toFixed(1);
+
+      const handleCollectFee = async () => {
+        if (!selectedStudent) {
+          alert('Please select a student');
+          return;
+        }
+        if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+          alert('Please enter a valid payment amount');
+          return;
+        }
+        
+        const amount = parseFloat(paymentAmount);
+        
+        const newPaid = selectedStudent.paid + amount;
+        const newTotal = selectedStudent.totalFee;
+        const newDue = Math.max(0, newTotal - newPaid);
+        let newStatus = 'Partial';
+        if (newDue <= 0) newStatus = 'Paid';
+        else if (newPaid === 0) newStatus = 'Pending';
+        else newStatus = 'Partial';
+        
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        const record = {
+          student_id: selectedStudent.id,
+          total_fee: newTotal,
+          paid_amount: newPaid,
+          status: newStatus,
+          last_payment_date: todayStr,
+          payment_mode: paymentMode,
+          due_date: new Date(new Date().getFullYear(), 11, 31).toISOString().split('T')[0]
+        };
+
+        let err;
+        if (selectedStudent.fee_id) {
+          const { error } = await window.supabaseClient.from('fees').update(record).eq('id', selectedStudent.fee_id);
+          err = error;
+        } else {
+          const { error } = await window.supabaseClient.from('fees').insert([record]);
+          err = error;
+        }
+        
+        if (err) {
+          alert('Error collecting fee: ' + err.message);
+        } else {
+          alert(`Payment of ₹${amount} collected from ${selectedStudent.studentName} via ${paymentMode}`);
+          setSelectedStudent(null);
+          setPaymentAmount('');
+          setRemarks('');
+          fetchFees(); // Refresh data from Supabase
+        }
+      };
+
+      const handleStudentSelect = (e) => {
+        const studentId = e.target.value; // It's a string UUID now
+        const student = feeData.find(s => s.id === studentId);
+        setSelectedStudent(student);
+        setPaymentAmount('');
+      };
+
+      const handleViewDetails = (student) => {
+        setViewModalStudent(student);
+      };
+
+      const handleEditClick = (student) => {
+        setEditModalStudent({ ...student });
+      };
+
+      const handleEditSave = (e) => {
+        e.preventDefault();
+        const updatedData = feeData.map(s => {
+          if (s.id === editModalStudent.id) {
+            const newPaid = parseFloat(editModalStudent.paid);
+            const newTotal = parseFloat(editModalStudent.totalFee);
+            const newDue = Math.max(0, newTotal - newPaid);
+            let newStatus = 'Partial';
+            if (newDue <= 0) newStatus = 'Paid';
+            else if (newPaid === 0) newStatus = 'Pending';
+            
+            return {
+              ...editModalStudent,
+              paid: newPaid,
+              totalFee: newTotal,
+              due: newDue,
+              status: newStatus
+            };
+          }
+          return s;
+        });
+        setFeeData(updatedData);
+        setEditModalStudent(null);
+        alert('Fee record updated successfully!');
+      };
+
+      const handlePrintReceipt = (student) => {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+          <head><title>Fee Receipt - ${student.studentName}</title>
+          <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; }
+            .receipt-header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 20px; margin-bottom: 20px; }
+            .receipt-title { font-size: 24px; font-weight: 700; color: #0f172a; }
+            .receipt-sub { color: #64748b; margin-top: 5px; }
+            .details { margin: 20px 0; }
+            .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #e2e8f0; }
+            .label { font-weight: 600; color: #475569; }
+            .value { font-weight: 700; color: #0f172a; }
+            .footer { margin-top: 30px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 20px; }
+            .status-paid { color: #10b981; }
+            .status-partial { color: #f59e0b; }
+            .status-pending { color: #ef4444; }
+          </style>
+          </head>
+          <body>
+            <div class="receipt-header">
+              <div class="receipt-title">🏠 HOSTEL MANAGEMENT SYSTEM</div>
+              <div class="receipt-sub">Fee Payment Receipt</div>
+            </div>
+            <div class="details">
+              <div class="row"><span class="label">Student Name:</span><span class="value">${student.studentName}</span></div>
+              <div class="row"><span class="label">Roll Number:</span><span class="value">${student.rollNumber}</span></div>
+              <div class="row"><span class="label">Department:</span><span class="value">${student.department}</span></div>
+              <div class="row"><span class="label">Total Fee:</span><span class="value">₹ ${student.totalFee.toLocaleString('en-IN')}</span></div>
+              <div class="row"><span class="label">Amount Paid:</span><span class="value">₹ ${student.paid.toLocaleString('en-IN')}</span></div>
+              <div class="row"><span class="label">Due Amount:</span><span class="value">₹ ${student.due.toLocaleString('en-IN')}</span></div>
+              <div class="row"><span class="label">Status:</span><span class="value status-${student.status.toLowerCase()}">${student.status}</span></div>
+              <div class="row"><span class="label">Last Payment:</span><span class="value">${student.lastPayment}</span></div>
+              <div class="row"><span class="label">Payment Mode:</span><span class="value">${student.paymentMode !== '-' ? student.paymentMode : 'N/A'}</span></div>
+            </div>
+            <div class="footer">
+              This is a system generated receipt • Valid for hostel records<br>
+              Generated on: ${new Date().toLocaleString()}
+            </div>
+          </body>
+          </html>
+        `);
+        printWindow.document.close();
+        printWindow.print();
+      };
+
+      const indexOfLast = currentPage * itemsPerPage;
+      const indexOfFirst = indexOfLast - itemsPerPage;
+      const currentStudents = feeData.slice(indexOfFirst, indexOfLast);
+      const totalPages = Math.ceil(feeData.length / itemsPerPage);
+
+      const formatIndianCurrency = (num) => {
+        return new Intl.NumberFormat('en-IN').format(num);
+      };
+
+      return (
+        <Layout activeMenu="Fees" activeSub="" title="Fees Management" breadcrumb="Dashboard > Fees">
+          {/* Stats Cards */}
+          <div className="stats-grid">
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: '#EFF6FF', color: '#1D4ED8' }}>
+                <i className="fas fa-users"></i>
+              </div>
+              <div className="stat-title">Total Students</div>
+              <div className="stat-value">{totalStudents}</div>
+              <div className="stat-sub">All Students</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: '#FEF2F2', color: '#EF4444' }}>
+                <i className="fas fa-clock"></i>
+              </div>
+              <div className="stat-title">Total Fee Due</div>
+              <div className="stat-value">₹ {formatIndianCurrency(totalFeeDueSum)}</div>
+              <div className="stat-sub">From {feeData.filter(s => s.due > 0).length} Students</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: '#ECFDF5', color: '#10B981' }}>
+                <i className="fas fa-check-circle"></i>
+              </div>
+              <div className="stat-title">Amount Collected</div>
+              <div className="stat-value">₹ {formatIndianCurrency(amountCollected)}</div>
+              <div className="stat-sub">From {feeData.filter(s => s.paid > 0).length} Students</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon" style={{ background: '#FFF7ED', color: '#F59E0B' }}>
+                <i className="fas fa-hourglass-half"></i>
+              </div>
+              <div className="stat-title">Pending Amount</div>
+              <div className="stat-value">₹ {formatIndianCurrency(pendingAmount)}</div>
+              <div className="stat-sub">From {feeData.filter(s => s.due > 0).length} Students</div>
+            </div>
+          </div>
+
+          {/* Collect Fee Form */}
+          <div className="add-section">
+            <div className="form-title">
+              <i className="fas fa-hand-holding-usd" style={{color: 'var(--primary)'}}></i> Collect Fee
+            </div>
+            <div className="form-grid">
+              <div className="input-field">
+                <label>Select Student *</label>
+                <select onChange={handleStudentSelect} value={selectedStudent?.id || ''}>
+                  <option value="">Select student</option>
+                  {feeData.map(s => (
+                    <option key={s.id} value={s.id}>{s.studentName} ({s.rollNumber})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="input-field">
+                <label>Total Fee (₹)</label>
+                <input type="text" value={selectedStudent ? formatIndianCurrency(selectedStudent.totalFee) : '60,000'} disabled />
+              </div>
+              <div className="input-field">
+                <label>Paid Amount (₹) *</label>
+                <input type="number" placeholder="Enter amount" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} />
+              </div>
+              <div className="input-field">
+                <label>Payment Mode *</label>
+                <div className="radio-group">
+                  <label className="radio-item"><input type="radio" name="paymentMode" value="Cash" checked={paymentMode === 'Cash'} onChange={(e) => setPaymentMode(e.target.value)} /> Cash</label>
+                  <label className="radio-item"><input type="radio" name="paymentMode" value="UPI" checked={paymentMode === 'UPI'} onChange={(e) => setPaymentMode(e.target.value)} /> UPI</label>
+                  <label className="radio-item"><input type="radio" name="paymentMode" value="Card" checked={paymentMode === 'Card'} onChange={(e) => setPaymentMode(e.target.value)} /> Card</label>
+                  <label className="radio-item"><input type="radio" name="paymentMode" value="Online" checked={paymentMode === 'Online'} onChange={(e) => setPaymentMode(e.target.value)} /> Online</label>
+                </div>
+              </div>
+              <div className="input-field">
+                <label>Remarks (Optional)</label>
+                <textarea rows="2" placeholder="Enter remarks" value={remarks} onChange={(e) => setRemarks(e.target.value)}></textarea>
+              </div>
+            </div>
+            <button className="btn-primary" onClick={handleCollectFee}>
+              <i className="fas fa-receipt"></i> Collect Fee
+            </button>
+          </div>
+
+          {/* Fee Status Overview */}
+          <div className="status-overview">
+            <div className="status-chip">
+              <div className="status-color" style={{ background: '#10B981' }}></div>
+              <div><span className="label">Paid</span><br/><span className="count">{paidCount}</span> <span className="percent">({paidPercent}%)</span></div>
+            </div>
+            <div className="status-chip">
+              <div className="status-color" style={{ background: '#F59E0B' }}></div>
+              <div><span className="label">Partial</span><br/><span className="count">{partialCount}</span> <span className="percent">({partialPercent}%)</span></div>
+            </div>
+            <div className="status-chip">
+              <div className="status-color" style={{ background: '#EF4444' }}></div>
+              <div><span className="label">Pending</span><br/><span className="count">{pendingCount}</span> <span className="percent">({pendingPercent}%)</span></div>
+            </div>
+            <div className="status-chip">
+              <div className="status-color" style={{ background: '#8B5CF6' }}></div>
+              <div><span className="label">Exempted</span><br/><span className="count">{exemptedCount}</span> <span className="percent">({exemptedPercent}%)</span></div>
+            </div>
+          </div>
+
+          {/* Students Fee List Table with Payment Mode column */}
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th><th>Student</th><th>Roll No.</th><th>Department</th><th>Total Fee (₹)</th><th>Paid (₹)</th><th>Due (₹)</th><th>Status</th><th>Last Payment</th><th>Payment Mode</th><th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr><td colSpan="11" style={{textAlign:'center', padding:'20px'}}>Loading fees...</td></tr>
+                ) : currentStudents.length === 0 ? (
+                  <tr><td colSpan="11" style={{textAlign:'center', padding:'20px'}}>No records found.</td></tr>
+                ) : currentStudents.map((student, idx) => {
+                  const isEditing = editingRow === student.id;
+                  return (
+                  <tr key={student.id}>
+                    <td>{(currentPage-1)*itemsPerPage + idx + 1}</td>
+                    <td><span style={{fontWeight:600}}>{student.studentName}</span></td>
+                    <td>{student.rollNumber}</td>
+                    <td>{student.department}</td>
+                    <td>
+                      {isEditing ? (
+                        <input type="number" style={{width:'80px', padding:'4px 8px', borderRadius:'4px', border:'1px solid #E2E8F0', outline:'none'}} value={editFormData.totalFee} onChange={e => setEditFormData({...editFormData, totalFee: e.target.value})} />
+                      ) : (
+                        formatIndianCurrency(student.totalFee)
+                      )}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input type="number" style={{width:'80px', padding:'4px 8px', borderRadius:'4px', border:'1px solid #E2E8F0', outline:'none'}} value={editFormData.paid} onChange={e => setEditFormData({...editFormData, paid: e.target.value})} />
+                      ) : (
+                        formatIndianCurrency(student.paid)
+                      )}
+                    </td>
+                    <td>{formatIndianCurrency(student.due)}</td>
+                    <td>
+                      <span className={
+                        student.status === 'Paid' ? 'badge-paid' : 
+                        student.status === 'Partial' ? 'badge-partial' : 'badge-pending'
+                      }>{student.status}</span>
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <input type="text" style={{width:'90px', padding:'4px 8px', borderRadius:'4px', border:'1px solid #E2E8F0', outline:'none'}} value={editFormData.lastPayment} onChange={e => setEditFormData({...editFormData, lastPayment: e.target.value})} />
+                      ) : (
+                        student.lastPayment
+                      )}
+                    </td>
+                    <td>
+                      {isEditing ? (
+                        <select style={{padding:'4px', borderRadius:'4px', border:'1px solid #E2E8F0', outline:'none'}} value={editFormData.paymentMode} onChange={e => setEditFormData({...editFormData, paymentMode: e.target.value})}>
+                           <option value="-">N/A</option><option value="Cash">Cash</option><option value="UPI">UPI</option><option value="Card">Card</option><option value="Online">Online</option>
+                        </select>
+                      ) : (
+                        student.paymentMode !== '-' ? student.paymentMode : '—'
+                      )}
+                    </td>
+                    <td className="action-icons">
+                      {isEditing ? (
+                        <React.Fragment>
+                          <i className="fas fa-check" style={{color:'#10B981'}} title="Save" onClick={() => handleSaveInline()}></i>
+                          <i className="fas fa-times" style={{color:'#EF4444'}} title="Cancel" onClick={() => setEditingRow(null)}></i>
+                        </React.Fragment>
+                      ) : (
+                        <React.Fragment>
+                          <i className="fas fa-eye" title="View Details" onClick={() => handleViewDetails(student)}></i>
+                          <i className="fas fa-edit" title="Edit Record" onClick={() => { setEditingRow(student.id); setEditFormData(student); }}></i>
+                          <i className="fas fa-print" title="Print Receipt" onClick={() => handlePrintReceipt(student)}></i>
+                        </React.Fragment>
+                      )}
+                    </td>
+                  </tr>
+                )})}
+              </tbody>
+            </table>
+            
+            {/* Pagination */}
+            <div className="pagination" style={{padding: '0 16px 16px'}}>
+              <button className="page-btn" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>«</button>
+              {[...Array(Math.min(totalPages, 8)).keys()].map(p => {
+                let pageNum = p + 1;
+                if (totalPages > 8 && currentPage > 4 && p < 7) {
+                  pageNum = currentPage - 3 + p;
+                  if (pageNum > totalPages) return null;
+                }
+                if (pageNum <= totalPages) {
+                  return (
+                    <button key={pageNum} className={`page-btn ${currentPage === pageNum ? 'active-page' : ''}`} onClick={() => setCurrentPage(pageNum)}>
+                      {pageNum}
+                    </button>
+                  );
+                }
+                return null;
+              })}
+              {totalPages > 8 && currentPage < totalPages - 3 && <span className="page-btn" style={{border:'none'}}>...</span>}
+              {totalPages > 8 && currentPage < totalPages - 2 && (
+                <button className="page-btn" onClick={() => setCurrentPage(totalPages)}>{totalPages}</button>
+              )}
+              <button className="page-btn" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>»</button>
+            </div>
+          </div>
+          
+          <div style={{marginTop:'12px', fontSize:'12px', color:'var(--text-muted)', textAlign:'right'}}>
+            Showing {indexOfFirst+1} to {Math.min(indexOfLast, feeData.length)} of {feeData.length} students
+          </div>
+
+          {/* View Details Modal */}
+          {viewModalStudent && (
+            <div className="modal-overlay" onClick={() => setViewModalStudent(null)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <div className="modal-header">
+                  <h3><i className="fas fa-user-graduate" style={{color: 'var(--primary)'}}></i> Fee Details - {viewModalStudent.studentName}</h3>
+                  <button className="close-modal" onClick={() => setViewModalStudent(null)}>&times;</button>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Roll Number:</span>
+                  <span className="fee-detail-value">{viewModalStudent.rollNumber}</span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Department:</span>
+                  <span className="fee-detail-value">{viewModalStudent.department}</span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Total Fee:</span>
+                  <span className="fee-detail-value">₹ {formatIndianCurrency(viewModalStudent.totalFee)}</span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Amount Paid:</span>
+                  <span className="fee-detail-value" style={{color: '#10B981'}}>₹ {formatIndianCurrency(viewModalStudent.paid)}</span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Due Amount:</span>
+                  <span className="fee-detail-value" style={{color: '#EF4444'}}>₹ {formatIndianCurrency(viewModalStudent.due)}</span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Status:</span>
+                  <span className="fee-detail-value">
+                    <span className={viewModalStudent.status === 'Paid' ? 'badge-paid' : viewModalStudent.status === 'Partial' ? 'badge-partial' : 'badge-pending'}>
+                      {viewModalStudent.status}
+                    </span>
+                  </span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Last Payment:</span>
+                  <span className="fee-detail-value">{viewModalStudent.lastPayment}</span>
+                </div>
+                <div className="fee-detail-row">
+                  <span className="fee-detail-label">Payment Mode:</span>
+                  <span className="fee-detail-value">{viewModalStudent.paymentMode !== '-' ? viewModalStudent.paymentMode : 'N/A'}</span>
+                </div>
+                <button className="btn-primary" style={{marginTop:'20px', width:'100%', justifyContent: 'center'}} onClick={() => { handlePrintReceipt(viewModalStudent); setViewModalStudent(null); }}>
+                  <i className="fas fa-print"></i> Print Receipt
+                </button>
+              </div>
+            </div>
+          )}
+
+          </Layout>
+      );
+    };
+    
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

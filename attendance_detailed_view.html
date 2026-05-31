@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Attendance Detailed View</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+    .details-container { display: flex; gap: 20px; margin-top: 20px; flex-wrap: wrap; }
+    .student-profile { flex: 1; min-width: 250px; background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center; border: 1px solid var(--border-color); }
+    .student-profile img { width: 100px; height: 100px; border-radius: 50%; margin-bottom: 15px; border: 4px solid #F1F5F9; }
+    .attendance-calendar { flex: 2; min-width: 400px; background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); }
+    .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; margin-top: 20px; }
+    .day-cell { padding: 12px 10px; border: 1px solid #F1F5F9; text-align: center; border-radius: 8px; font-size: 13px; font-weight: 600; }
+    .day-present { background-color: #ECFDF5; color: #10B981; border-color: #D1FAE5; }
+    .day-absent { background-color: #FEF2F2; color: #EF4444; border-color: #FEE2E2; }
+    .day-leave { background-color: #FFF7ED; color: #F59E0B; border-color: #FFEDD5; }
+    .day-header { font-weight: 700; color: var(--text-muted); background: #F8FAFC; border: none; }
+    .stat-badge { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+    .stat-present { background: #ECFDF5; color: #10B981; }
+    .stat-absent { background: #FEF2F2; color: #EF4444; }
+    .stat-leave { background: #FFF7ED; color: #F59E0B; }
+    
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+    const App = () => {
+        const [student, setStudent] = React.useState(null);
+        
+        React.useEffect(() => {
+            const params = new URLSearchParams(window.location.search);
+            const studentId = params.get('studentId') || 'S101';
+            
+            // Mock data lookup (can be replaced with local storage if needed)
+            const mockDb = [
+                { id: 'S101', name: 'Rahul Kumar', room: '101A', dept: 'Computer Science', year: '3rd Year', attendance: '80.7%', present: 21, absent: 4, leave: 1 },
+                { id: 'S102', name: 'Amit Singh', room: '102B', dept: 'Mechanical', year: '2nd Year', attendance: '92.3%', present: 24, absent: 2, leave: 0 },
+                { id: 'S103', name: 'Priya Sharma', room: '201A', dept: 'Electrical', year: '4th Year', attendance: '69.2%', present: 18, absent: 6, leave: 2 }
+            ];
+            
+            // Try fetching from local storage first
+            const stored = JSON.parse(window.localStorage.getItem('hims_students') || '[]');
+            let found = stored.find(s => s.id === studentId || s.rollNo === studentId);
+            
+            if (!found) {
+                found = mockDb.find(s => s.id === studentId) || mockDb[0];
+            }
+            
+            setStudent(found);
+        }, []);
+
+        if (!student) return <Layout activeMenu="Reports" activeSub="Attendance Reports" title="Attendance Detailed View">Loading...</Layout>;
+
+        return (
+            <Layout activeMenu="Reports" activeSub="Attendance Reports" title="Attendance Detailed View" breadcrumb="Dashboard > Reports > Attendance Reports > Detailed View">
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                    <h2 style={{fontSize:'18px', fontWeight:700, margin:0}}><i className="fas fa-user-clock" style={{color:'var(--primary)', marginRight:'8px'}}></i> Student Attendance Record</h2>
+                    <a href="attendance_reports.html" style={{background:'#F1F5F9', color:'var(--text-main)', padding:'8px 16px', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:600}}><i className="fas fa-arrow-left" style={{marginRight:'6px'}}></i> Back to Reports</a>
+                </div>
+
+                <div className="details-container">
+                    <div className="student-profile">
+                        <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(student.name || student.studentName)}&background=1D4ED8&color=fff&size=128`} alt="Student" />
+                        <h4 style={{fontSize:'16px', fontWeight:700, color:'var(--text-main)', margin:'0 0 4px 0'}}>{student.name || student.studentName}</h4>
+                        <p style={{fontSize:'13px', color:'var(--text-muted)', margin:'0 0 16px 0'}}>{student.id || student.rollNo}</p>
+                        
+                        <div style={{background:'#F8FAFC', padding:'16px', borderRadius:'8px', textAlign:'left', border:'1px solid #F1F5F9', marginBottom:'20px'}}>
+                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'12px'}}>
+                                <span style={{color:'var(--text-muted)', fontSize:'12px', fontWeight:600}}>Department</span>
+                                <span style={{color:'var(--text-main)', fontSize:'12px', fontWeight:700}}>{student.dept || student.department || 'N/A'}</span>
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between', marginBottom:'12px'}}>
+                                <span style={{color:'var(--text-muted)', fontSize:'12px', fontWeight:600}}>Year</span>
+                                <span style={{color:'var(--text-main)', fontSize:'12px', fontWeight:700}}>{student.year || 'N/A'}</span>
+                            </div>
+                            <div style={{display:'flex', justifyContent:'space-between'}}>
+                                <span style={{color:'var(--text-muted)', fontSize:'12px', fontWeight:600}}>Room No</span>
+                                <span style={{color:'var(--text-main)', fontSize:'12px', fontWeight:700}}>{student.room || student.roomNo || 'N/A'}</span>
+                            </div>
+                        </div>
+
+                        <div style={{background:'#ECFDF5', border:'1px solid #10B981', padding:'16px', borderRadius:'8px'}}>
+                            <div style={{fontSize:'24px', fontWeight:800, color:'#10B981', margin:'0 0 4px 0'}}>{student.attendance || '85%'}</div>
+                            <div style={{fontSize:'12px', color:'#10B981', fontWeight:600}}>Overall Attendance</div>
+                        </div>
+                    </div>
+
+                    <div className="attendance-calendar">
+                        <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'20px'}}>
+                            <h4 style={{fontSize:'16px', fontWeight:700, margin:0}}>Attendance Calendar - May 2024</h4>
+                            <div style={{display:'flex', gap:'8px'}}>
+                                <span className="stat-badge stat-present"><i className="fas fa-check-circle"></i> {student.present || 21}</span>
+                                <span className="stat-badge stat-absent"><i className="fas fa-times-circle"></i> {student.absent || 4}</span>
+                                <span className="stat-badge stat-leave"><i className="fas fa-minus-circle"></i> {student.leave || 1}</span>
+                            </div>
+                        </div>
+                        
+                        <div className="calendar-grid">
+                            {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d} className="day-cell day-header">{d}</div>)}
+                            
+                            <div className="day-cell" style={{color:'#CBD5E1'}}>28</div>
+                            <div className="day-cell" style={{color:'#CBD5E1'}}>29</div>
+                            <div className="day-cell" style={{color:'#CBD5E1'}}>30</div>
+                            <div className="day-cell day-present">1</div>
+                            <div className="day-cell day-present">2</div>
+                            <div className="day-cell day-present">3</div>
+                            <div className="day-cell day-absent">4</div>
+                            
+                            <div className="day-cell day-present">5</div>
+                            <div className="day-cell day-present">6</div>
+                            <div className="day-cell day-present">7</div>
+                            <div className="day-cell day-leave">8</div>
+                            <div className="day-cell day-present">9</div>
+                            <div className="day-cell day-present">10</div>
+                            <div className="day-cell day-absent">11</div>
+                            
+                            <div className="day-cell day-present">12</div>
+                            <div className="day-cell day-present">13</div>
+                            <div className="day-cell day-present">14</div>
+                            <div className="day-cell day-present">15</div>
+                            <div className="day-cell day-present">16</div>
+                            <div className="day-cell day-present">17</div>
+                            <div className="day-cell day-present">18</div>
+                            
+                            <div className="day-cell day-absent">19</div>
+                            <div className="day-cell day-present">20</div>
+                            <div className="day-cell day-present">21</div>
+                            <div className="day-cell day-present">22</div>
+                            <div className="day-cell day-present">23</div>
+                            <div className="day-cell day-present">24</div>
+                            <div className="day-cell day-absent">25</div>
+                        </div>
+                    </div>
+                </div>
+            </Layout>
+        );
+    };
+    
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

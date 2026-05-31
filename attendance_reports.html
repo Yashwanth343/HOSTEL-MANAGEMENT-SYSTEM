@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Attendance Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+/* Add specific CSS for attendance reports */
+.card { background: var(--white); border-radius: 12px; border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); padding: 20px; }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.card-title { font-size: 16px; font-weight: 700; color: var(--text-main); }
+
+.filter-bar { display: flex; gap: 12px; margin-bottom: 24px; align-items: center; flex-wrap: wrap; }
+.filter-select, .filter-input { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; color: var(--text-main); outline: none; background: white; }
+.filter-input { flex: 1; min-width: 200px; }
+.btn-group { display: flex; gap: 4px; background: #F1F5F9; padding: 4px; border-radius: 8px; }
+.btn-toggle { padding: 8px 16px; border: none; background: transparent; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; color: var(--text-muted); }
+.btn-toggle.active { background: white; color: var(--primary); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 24px; }
+.kpi-card { display: flex; flex-direction: column; gap: 8px; }
+.kpi-header { display: flex; justify-content: space-between; align-items: flex-start; }
+.kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+.kpi-icon.green { background: #ECFDF5; color: #10B981; }
+.kpi-icon.red { background: #FEF2F2; color: #EF4444; }
+.kpi-icon.orange { background: #FFF7ED; color: #F59E0B; }
+.kpi-icon.purple { background: #FAF5FF; color: #8B5CF6; }
+.kpi-icon.teal { background: #F0FDFA; color: #14B8A6; }
+.kpi-value { font-size: 24px; font-weight: 800; color: var(--text-main); }
+.kpi-label { font-size: 13px; color: var(--text-muted); font-weight: 500; }
+.kpi-sub { font-size: 12px; color: var(--text-muted); }
+
+.charts-row { display: grid; grid-template-columns: 65% calc(35% - 20px); gap: 20px; margin-bottom: 24px; }
+
+.table-responsive { overflow-x: auto; margin-top: 10px; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); font-size: 13px; }
+.table th { font-weight: 600; color: var(--text-muted); background: #F8FAFC; white-space: nowrap; }
+.table td { color: var(--text-main); font-weight: 500; }
+.table tbody tr:hover { background: #F8FAFC; }
+
+.badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.badge.excellent { background: #ECFDF5; color: #10B981; }
+.badge.good { background: #EFF6FF; color: #3B82F6; }
+.badge.average { background: #FFF7ED; color: #F59E0B; }
+
+.action-btn { background: transparent; border: none; color: #94A3B8; cursor: pointer; font-size: 14px; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; }
+.action-btn:hover { background: #F1F5F9; color: var(--primary); }
+
+@media (max-width: 1200px) {
+    .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    .charts-row { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 768px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .filter-bar { flex-direction: column; align-items: stretch; }
+    .filter-input { width: 100%; }
+}
+
+@media (max-width: 480px) {
+    .kpi-grid { grid-template-columns: 1fr; }
+}
+
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+const App = () => {
+    const [dataToRender, setDataToRender] = React.useState([]);
+    const [stats, setStats] = React.useState({ presentAvg: 0, absentAvg: 0, leaveAvg: 0, total: 0, days: 0, pCount: 0, aCount: 0, lCount: 0 });
+    const [viewMode, setViewMode] = React.useState('Summary');
+    
+    React.useEffect(() => {
+        const load = async () => {
+            if(!window.supabaseClient) return;
+            const supabase = window.supabaseClient;
+            const { data: stdData } = await supabase.from('students').select('id, roll_number, full_name, department, year, rooms(room_number)');
+            const { data: attData } = await supabase.from('attendance').select('*');
+            
+            let totalDays = 0;
+            let tPres = 0, tAbs = 0, tLea = 0;
+            
+            if (attData && attData.length > 0) {
+                const dates = new Set(attData.map(a => a.date));
+                totalDays = dates.size;
+            }
+
+            const mapped = [];
+            if (stdData) {
+                stdData.forEach(s => {
+                    const sAtt = attData ? attData.filter(a => a.student_id === s.id) : [];
+                    const present = sAtt.filter(a => a.status === 'Present').length;
+                    const absent = sAtt.filter(a => a.status === 'Absent').length;
+                    const leave = sAtt.filter(a => a.status === 'Leave').length;
+                    
+                    tPres += present;
+                    tAbs += absent;
+                    tLea += leave;
+
+                    const totalAtt = present + absent + leave;
+                    const attPct = totalAtt > 0 ? ((present/totalAtt)*100).toFixed(1) : 0;
+                    let status = 'Average';
+                    if(attPct >= 85) status = 'Excellent';
+                    else if(attPct >= 75) status = 'Good';
+
+                    mapped.push({
+                       id: s.id,
+                       roll: s.roll_number || 'N/A',
+                       name: s.full_name,
+                       room: s.rooms?.room_number || 'N/A',
+                       dept: s.department || 'N/A',
+                       year: s.year || 'N/A',
+                       present, absent, leave,
+                       attendance: attPct,
+                       status
+                    });
+                });
+            }
+            
+            const totalRecords = tPres + tAbs + tLea;
+            setStats({
+                presentAvg: totalRecords > 0 ? ((tPres/totalRecords)*100).toFixed(2) : 0,
+                absentAvg: totalRecords > 0 ? ((tAbs/totalRecords)*100).toFixed(2) : 0,
+                leaveAvg: totalRecords > 0 ? ((tLea/totalRecords)*100).toFixed(2) : 0,
+                total: stdData ? stdData.length : 0,
+                days: totalDays,
+                pCount: tPres,
+                aCount: tAbs,
+                lCount: tLea
+            });
+            setDataToRender(mapped);
+        };
+        load();
+    }, []);
+
+    const getStatusBadge = (status) => {
+        if(status === 'Excellent') return 'badge excellent';
+        if(status === 'Good') return 'badge good';
+        return 'badge average';
+    };
+
+    React.useEffect(() => {
+        // Line Chart
+        const lineCtx = document.getElementById('lineChart');
+        if (lineCtx) {
+            new Chart(lineCtx, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+                    datasets: [
+                        {
+                            label: 'Present %',
+                            data: [82, 85, 80, 88, 81, 79],
+                            borderColor: '#10B981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Absent %',
+                            data: [15, 12, 16, 10, 14, 18],
+                            borderColor: '#EF4444',
+                            backgroundColor: 'transparent',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Leave %',
+                            data: [3, 3, 4, 2, 5, 3],
+                            borderColor: '#F59E0B',
+                            backgroundColor: 'transparent',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: { y: { beginAtZero: true, max: 100 } }
+                }
+            });
+        }
+
+        // Donut Chart
+        const donutCtx = document.getElementById('donutChart');
+        if (donutCtx) {
+            new Chart(donutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present', 'Absent', 'Leave'],
+                    datasets: [{
+                        data: [stats.pCount, stats.aCount, stats.lCount],
+                        backgroundColor: ['#10B981', '#EF4444', '#F59E0B'],
+                        borderWidth: 0,
+                        cutout: '75%'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+    }, [stats]);
+
+    return (
+        <Layout activeMenu="Reports" activeSub="Attendance Reports" title="Attendance Reports" breadcrumb="Dashboard > Reports > Attendance Reports">
+            
+            {/* Filter Bar */}
+            <div className="filter-bar">
+                <select className="filter-select">
+                    <option>All Rooms</option>
+                    <option>Block A</option>
+                    <option>Block B</option>
+                </select>
+                <select className="filter-select">
+                    <option>All Departments</option>
+                    <option>Computer Science</option>
+                    <option>Mechanical</option>
+                    <option>Electrical</option>
+                </select>
+                <select className="filter-select">
+                    <option>All Years</option>
+                    <option>1st Year</option>
+                    <option>2nd Year</option>
+                    <option>3rd Year</option>
+                    <option>4th Year</option>
+                </select>
+                <div style={{position: 'relative', flex: 1, minWidth: '200px'}}>
+                    <i className="fas fa-search" style={{position: 'absolute', left: '12px', top: '12px', color: '#94A3B8'}}></i>
+                    <input type="text" className="filter-input" placeholder="Search by Student ID, Name..." style={{width: '100%', paddingLeft: '36px'}} />
+                </div>
+                <div className="btn-group">
+                    <button className={`btn-toggle ${viewMode === 'Summary' ? 'active' : ''}`} onClick={() => setViewMode('Summary')}>Summary</button>
+                    <button className={`btn-toggle ${viewMode === 'Detailed View' ? 'active' : ''}`} onClick={() => setViewMode('Detailed View')}>Detailed View</button>
+                </div>
+            </div>
+
+            {/* KPI Cards */}
+            <div className="kpi-grid">
+                <div className="card kpi-card">
+                    <div className="kpi-header">
+                        <div>
+                            <div className="kpi-value">{stats.presentAvg}%</div>
+                            <div className="kpi-label">Average Present</div>
+                        </div>
+                        <div className="kpi-icon green"><i className="fas fa-calendar-check"></i></div>
+                    </div>
+                    <div className="kpi-sub">({stats.pCount} Days total)</div>
+                </div>
+                <div className="card kpi-card">
+                    <div className="kpi-header">
+                        <div>
+                            <div className="kpi-value">{stats.absentAvg}%</div>
+                            <div className="kpi-label">Average Absent</div>
+                        </div>
+                        <div className="kpi-icon red"><i className="fas fa-calendar-times"></i></div>
+                    </div>
+                    <div className="kpi-sub">({stats.aCount} Days total)</div>
+                </div>
+                <div className="card kpi-card">
+                    <div className="kpi-header">
+                        <div>
+                            <div className="kpi-value">{stats.leaveAvg}%</div>
+                            <div className="kpi-label">Average Leave</div>
+                        </div>
+                        <div className="kpi-icon orange"><i className="fas fa-calendar-minus"></i></div>
+                    </div>
+                    <div className="kpi-sub">({stats.lCount} Days total)</div>
+                </div>
+                <div className="card kpi-card">
+                    <div className="kpi-header">
+                        <div>
+                            <div className="kpi-value">{stats.total}</div>
+                            <div className="kpi-label">Total Students</div>
+                        </div>
+                        <div className="kpi-icon purple"><i className="fas fa-users"></i></div>
+                    </div>
+                    <div className="kpi-sub">Active Students</div>
+                </div>
+                <div className="card kpi-card">
+                    <div className="kpi-header">
+                        <div>
+                            <div className="kpi-value">{stats.days} Days</div>
+                            <div className="kpi-label">Total Working Days</div>
+                        </div>
+                        <div className="kpi-icon teal"><i className="fas fa-clipboard-list"></i></div>
+                    </div>
+                    <div className="kpi-sub">In Selected Period</div>
+                </div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="charts-row">
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">Attendance Trend (Overall)</div>
+                        <select className="filter-select" style={{padding:'6px 12px', fontSize:'12px'}}>
+                            <option>This Week</option>
+                            <option>Last Week</option>
+                            <option>This Month</option>
+                        </select>
+                    </div>
+                    <div style={{height: '300px', width: '100%'}}>
+                        <canvas id="lineChart"></canvas>
+                    </div>
+                </div>
+                <div className="card">
+                    <div className="card-header">
+                        <div className="card-title">Attendance Distribution</div>
+                    </div>
+                    <div style={{height: '300px', width: '100%', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center'}}>
+                        <canvas id="donutChart"></canvas>
+                        <div style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', pointerEvents: 'none'}}>
+                            <div style={{fontSize: '20px', fontWeight: 800, color: 'var(--text-main)', marginTop: '20px'}}>{stats.total}</div>
+                            <div style={{fontSize: '12px', color: 'var(--text-muted)'}}>Students</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="card" style={{marginBottom: '24px'}}>
+                <div className="card-header">
+                    <div className="card-title">Student Attendance Summary</div>
+                    <div style={{display:'flex', gap:'12px'}}>
+                        <input type="date" className="filter-input" style={{padding:'6px 12px', fontSize:'12px', minWidth:'auto'}} />
+                        <button className="btn-toggle active" style={{padding:'6px 12px', fontSize:'12px'}}><i className="fas fa-filter"></i> Filter</button>
+                    </div>
+                </div>
+                <div className="table-responsive">
+                    <table className="table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Room No.</th>
+                                <th>Department</th>
+                                <th>Year</th>
+                                <th>Present (21)</th>
+                                <th>Absent (4)</th>
+                                <th>Leave (1)</th>
+                                <th>Attendance %</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {dataToRender.map((student, index) => (
+                                <tr key={student.id}>
+                                    <td>{index + 1}</td>
+                                    <td style={{color: 'var(--primary)', fontWeight: 600}}>{student.roll}</td>
+                                    <td>{student.name}</td>
+                                    <td>{student.room}</td>
+                                    <td>{student.dept}</td>
+                                    <td>{student.year}</td>
+                                    <td style={{color: '#10B981', fontWeight: 600}}>{student.present}</td>
+                                    <td style={{color: '#EF4444', fontWeight: 600}}>{student.absent}</td>
+                                    <td style={{color: '#F59E0B', fontWeight: 600}}>{student.leave}</td>
+                                    <td style={{fontWeight: 700}}>{student.attendance}%</td>
+                                    <td><span className={getStatusBadge(student.status)}>{student.status}</span></td>
+                                    <td>
+                                        <a href={`attendance_detailed_view.html?studentId=${student.id}`} className="action-btn" title="View Details"><i className="fas fa-eye"></i></a>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </Layout>
+    );
+};
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

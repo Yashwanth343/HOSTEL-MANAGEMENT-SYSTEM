@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HIMS | Universal Authentication</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+    <style>
+        :root {
+            --primary: #1D4ED8;
+            --student-primary: #10B981;
+            --bg-color: #F8FAFC;
+            --text-main: #0F172A;
+            --text-muted: #64748B;
+            --border-color: #E2E8F0;
+            --white: #FFFFFF;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        
+        body { 
+            background: linear-gradient(135deg, #F1F5F9 0%, #E2E8F0 100%); 
+            color: var(--text-main); 
+            display: flex; 
+            min-height: 100vh; 
+            align-items: center; 
+            justify-content: center; 
+            padding: 20px;
+        }
+
+        .auth-container {
+            display: flex;
+            width: 100%;
+            max-width: 1100px;
+            background: var(--white);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            min-height: 600px;
+        }
+
+        /* Left Image Section */
+        .auth-image-box {
+            flex: 1;
+            background: linear-gradient(135deg, rgba(29,78,216,0.9) 0%, rgba(30,58,138,0.9) 100%), url('https://images.unsplash.com/photo-1541339907198-e08756dedf3f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 60px 40px;
+            color: white;
+            transition: 0.5s ease;
+        }
+
+        .auth-image-box.student-mode {
+            background: linear-gradient(135deg, rgba(16,185,129,0.9) 0%, rgba(6,95,70,0.9) 100%), url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .brand i { font-size: 32px; }
+        .brand div h2 { font-size: 24px; font-weight: 800; letter-spacing: 1px; margin: 0; line-height: 1.2; }
+        .brand div p { font-size: 11px; font-weight: 600; letter-spacing: 2px; color: rgba(255,255,255,0.8); margin: 0; text-transform: uppercase; }
+
+        .auth-image-box .hero-text { margin-top: auto; }
+        .hero-text h1 { font-size: 36px; font-weight: 800; margin-bottom: 16px; line-height: 1.2; }
+        .hero-text p { font-size: 16px; font-weight: 400; color: rgba(255,255,255,0.9); line-height: 1.6; max-width: 320px; }
+
+        /* Right Form Section */
+        .auth-form-box {
+            flex: 1.2;
+            padding: 50px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background: var(--white);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        /* Scrollbar for right side if registration gets tall */
+        .auth-form-box::-webkit-scrollbar { width: 6px; }
+        .auth-form-box::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+
+        /* Toggle Switch */
+        .role-toggle {
+            display: flex;
+            background: #F1F5F9;
+            border-radius: 12px;
+            padding: 6px;
+            margin-bottom: 32px;
+            position: relative;
+        }
+        .toggle-btn {
+            flex: 1;
+            padding: 12px 0;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-muted);
+            cursor: pointer;
+            border-radius: 8px;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            z-index: 2;
+        }
+        .toggle-btn i { margin-right: 8px; }
+        .toggle-btn.active { color: white; }
+
+        .toggle-slider {
+            position: absolute;
+            top: 6px;
+            bottom: 6px;
+            width: calc(50% - 6px);
+            background: var(--primary);
+            border-radius: 8px;
+            transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1;
+        }
+        
+        /* State driven slider colors */
+        .slider-admin { left: 6px; background: var(--primary); }
+        .slider-student { left: 50%; background: var(--student-primary); }
+
+        .form-header h2 { font-size: 28px; font-weight: 800; color: var(--text-main); margin-bottom: 8px; }
+        .form-header p { font-size: 15px; color: var(--text-muted); margin-bottom: 32px; }
+
+        /* Form Grid for Registration */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .full-width { grid-column: span 2; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 6px; }
+        
+        .input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        .input-group i {
+            position: absolute;
+            left: 14px;
+            color: #94A3B8;
+            font-size: 14px;
+        }
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px 14px 12px 38px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-main);
+            transition: 0.2s;
+            outline: none;
+            background: #F8FAFC;
+        }
+        
+        .input-group input.focus-admin:focus, .input-group select.focus-admin:focus { border-color: var(--primary); background: white; box-shadow: 0 0 0 4px rgba(29, 78, 216, 0.1); }
+        .input-group input.focus-student:focus, .input-group select.focus-student:focus { border-color: var(--student-primary); background: white; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1); }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            color: white;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 24px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+        }
+
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+        .bg-admin { background: var(--primary); }
+        .bg-student { background: var(--student-primary); }
+
+        .footer-links {
+            text-align: center;
+            margin-top: 24px;
+        }
+        .footer-links a {
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: 0.2s;
+            cursor: pointer;
+        }
+        .link-admin { color: var(--primary); }
+        .link-student { color: var(--student-primary); }
+        
+        @media (max-width: 900px) {
+            .auth-container { flex-direction: column; max-width: 480px; min-height: auto; }
+            .auth-image-box { padding: 40px 30px; }
+            .hero-text h1 { font-size: 28px; }
+            .auth-form-box { padding: 40px 30px; max-height: none; overflow: visible; }
+            .form-grid { grid-template-columns: 1fr; }
+            .full-width { grid-column: span 1; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const AuthPortal = () => {
+            const [isStudent, setIsStudent] = React.useState(true); // Default to student
+            const [isLogin, setIsLogin] = React.useState(true); // Default to Login
+
+            const handleLoginSubmit = (e) => {
+                e.preventDefault();
+                if (isStudent) {
+                    window.location.href = 'Student/student_dashboard.html';
+                } else {
+                    window.location.href = 'Admin/dashboard.html';
+                }
+            };
+            
+            const handleRegisterSubmit = (e) => {
+                e.preventDefault();
+                alert(isStudent ? "Student Registration successful! Please log in." : "Admin Registration successful! Please log in.");
+                setIsLogin(true); // Flip back to login after successful register
+            };
+
+            const inputClass = isStudent ? "focus-student" : "focus-admin";
+            const btnClass = isStudent ? "bg-student" : "bg-admin";
+            const linkClass = isStudent ? "link-student" : "link-admin";
+
+            // Common dynamic properties
+            const titleText = isStudent ? (isLogin ? "Welcome Back, Student!" : "Join the Hostel") : (isLogin ? "Admin Control Panel" : "Register as Admin");
+            const descText = isStudent 
+                ? (isLogin ? "Access your dashboard to view attendance, manage fees, and raise complaints effortlessly." : "Create your student account to get access to hostel services and announcements.")
+                : (isLogin ? "Manage hostel operations, track student progress, and ensure a seamless living experience." : "Register for an administrative account to oversee and manage hostel activities.");
+
+            return (
+                <div className="auth-container">
+                    
+                    {/* Dynamic Image Box */}
+                    <div className={`auth-image-box ${isStudent ? 'student-mode' : ''}`}>
+                        <div className="brand">
+                            <i className="fas fa-building"></i>
+                            <div>
+                                <h2>HOSTEL</h2>
+                                <p>Management System</p>
+                            </div>
+                        </div>
+                        <div className="hero-text">
+                            <h1>{titleText}</h1>
+                            <p>{descText}</p>
+                        </div>
+                    </div>
+
+                    {/* Form Box */}
+                    <div className="auth-form-box">
+                        
+                        <div className="role-toggle">
+                            <div className={`toggle-slider ${isStudent ? 'slider-student' : 'slider-admin'}`}></div>
+                            <div className={`toggle-btn ${!isStudent ? 'active' : ''}`} onClick={() => setIsStudent(false)}>
+                                <i className="fas fa-user-shield"></i> Admin
+                            </div>
+                            <div className={`toggle-btn ${isStudent ? 'active' : ''}`} onClick={() => setIsStudent(true)}>
+                                <i className="fas fa-user-graduate"></i> Student
+                            </div>
+                        </div>
+
+                        <div className="form-header">
+                            <h2>{isLogin ? "Sign In" : "Create Account"}</h2>
+                            <p>{isLogin ? "Enter your credentials to access your account." : "Fill out the fields below to register."}</p>
+                        </div>
+
+                        {/* --- LOGIN FORM --- */}
+                        {isLogin && (
+                            <form onSubmit={handleLoginSubmit}>
+                                <div className="form-group">
+                                    <label>{isStudent ? "Roll Number / Email" : "Admin ID / Email"}</label>
+                                    <div className="input-group">
+                                        <i className={isStudent ? "far fa-id-badge" : "far fa-user"}></i>
+                                        <input type="text" className={inputClass} placeholder={isStudent ? "e.g. CS2021001" : "Enter admin credentials"} required />
+                                    </div>
+                                </div>
+
+                                <div className="form-group" style={{marginBottom: '10px'}}>
+                                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'6px'}}>
+                                        <label style={{margin:0}}>Password</label>
+                                        <a href="#" style={{fontSize:'12px', fontWeight:600, color:'#64748B', textDecoration:'none'}}>Forgot Password?</a>
+                                    </div>
+                                    <div className="input-group">
+                                        <i className="fas fa-lock"></i>
+                                        <input type="password" className={inputClass} placeholder="••••••••" required />
+                                    </div>
+                                </div>
+
+                                <button type="submit" className={`btn-submit ${btnClass}`}>
+                                    Login Securely <i className="fas fa-arrow-right"></i>
+                                </button>
+
+                                <div className="footer-links">
+                                    <span style={{color: '#64748B', fontSize: '14px'}}>Don't have an account? </span>
+                                    <a onClick={() => setIsLogin(false)} className={linkClass}>Register Here</a>
+                                </div>
+                            </form>
+                        )}
+
+
+                        {/* --- REGISTER FORM --- */}
+                        {!isLogin && (
+                            <form onSubmit={handleRegisterSubmit}>
+                                <div className="form-grid">
+                                    <div className="form-group full-width">
+                                        <label>Full Name</label>
+                                        <div className="input-group">
+                                            <i className="far fa-user"></i>
+                                            <input type="text" className={inputClass} placeholder="Enter your full name" required />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Email Address</label>
+                                        <div className="input-group">
+                                            <i className="far fa-envelope"></i>
+                                            <input type="email" className={inputClass} placeholder="Email address" required />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Phone Number</label>
+                                        <div className="input-group">
+                                            <i className="fas fa-phone-alt"></i>
+                                            <input type="tel" className={inputClass} placeholder="Phone number" required />
+                                        </div>
+                                    </div>
+
+                                    {/* Role Specific Registration Fields */}
+                                    {isStudent ? (
+                                        <>
+                                            <div className="form-group">
+                                                <label>Roll Number</label>
+                                                <div className="input-group">
+                                                    <i className="far fa-id-badge"></i>
+                                                    <input type="text" className={inputClass} placeholder="e.g. CS2021001" required />
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Year / Semester</label>
+                                                <div className="input-group">
+                                                    <i className="fas fa-calendar-alt"></i>
+                                                    <select className={inputClass} required>
+                                                        <option value="">Select Year</option>
+                                                        <option>1st Year</option>
+                                                        <option>2nd Year</option>
+                                                        <option>3rd Year</option>
+                                                        <option>4th Year</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="form-group full-width">
+                                                <label>Department</label>
+                                                <div className="input-group">
+                                                    <i className="fas fa-laptop-code"></i>
+                                                    <select className={inputClass} required>
+                                                        <option value="">Select Department</option>
+                                                        <option>Computer Science</option>
+                                                        <option>Mechanical</option>
+                                                        <option>Civil</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="form-group">
+                                                <label>Employee ID</label>
+                                                <div className="input-group">
+                                                    <i className="far fa-id-card"></i>
+                                                    <input type="text" className={inputClass} placeholder="e.g. EMP-101" required />
+                                                </div>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Designation</label>
+                                                <div className="input-group">
+                                                    <i className="fas fa-briefcase"></i>
+                                                    <select className={inputClass} required>
+                                                        <option value="">Select Role</option>
+                                                        <option>Warden</option>
+                                                        <option>Accountant</option>
+                                                        <option>Administrator</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div className="form-group full-width">
+                                                <label>Department</label>
+                                                <div className="input-group">
+                                                    <i className="fas fa-building"></i>
+                                                    <select className={inputClass} required>
+                                                        <option value="">Select Department</option>
+                                                        <option>Management</option>
+                                                        <option>Finance</option>
+                                                        <option>Maintenance</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="form-group">
+                                        <label>Password</label>
+                                        <div className="input-group">
+                                            <i className="fas fa-lock"></i>
+                                            <input type="password" className={inputClass} placeholder="••••••••" required />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label>Confirm Password</label>
+                                        <div className="input-group">
+                                            <i className="fas fa-lock"></i>
+                                            <input type="password" className={inputClass} placeholder="••••••••" required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" className={`btn-submit ${btnClass}`}>
+                                    Create Account <i className="fas fa-user-plus"></i>
+                                </button>
+
+                                <div className="footer-links">
+                                    <span style={{color: '#64748B', fontSize: '14px'}}>Already have an account? </span>
+                                    <a onClick={() => setIsLogin(true)} className={linkClass}>Sign In</a>
+                                </div>
+                            </form>
+                        )}
+                        
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AuthPortal />);
+    </script>
+</body>
+</html>

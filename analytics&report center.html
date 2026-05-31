@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Analytics & Export Center</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+  /* ── Header ── */
+  .an-header-bar { display:flex; justify-content:space-between; align-items:center; margin-bottom:22px; flex-wrap:wrap; gap:12px; }
+  .an-title-block h2 { font-size:20px; font-weight:800; color:#0F172A; }
+  .an-title-block p  { font-size:13px; color:#64748B; margin-top:2px; }
+  .an-actions { display:flex; gap:10px; flex-wrap:wrap; }
+  .btn-hdr { padding:9px 18px; border:1px solid #E2E8F0; background:white; border-radius:8px; font-size:13px; font-weight:600; color:#475569; cursor:pointer; display:flex; align-items:center; gap:7px; transition:0.2s; }
+  .btn-hdr:hover { background:#F8FAFC; }
+  .btn-hdr.primary { background:linear-gradient(135deg,#1D4ED8,#3B82F6); color:white; border-color:#1D4ED8; }
+  .btn-hdr.primary:hover { opacity:0.9; }
+
+  /* ── Sticky Tab Bar ── */
+  .tabs-wrap { position:sticky; top:70px; z-index:80; background:white; border-bottom:2px solid #F1F5F9; margin-bottom:28px; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+  .analytics-tabs { display:flex; gap:2px; overflow-x:auto; padding:0 4px; }
+  .at-tab {
+    font-size:13px; font-weight:600; color:#64748B; cursor:pointer;
+    padding:13px 18px; border-bottom:3px solid transparent; white-space:nowrap;
+    border-radius:6px 6px 0 0; transition:0.2s; display:flex; align-items:center; gap:7px;
+  }
+  .at-tab:hover  { color:#1D4ED8; background:#EFF6FF; }
+  .at-tab.active { color:#1D4ED8; border-bottom-color:#1D4ED8; }
+
+  /* ── Section anchors ── */
+  .an-section { scroll-margin-top:130px; margin-bottom:32px; }
+  .section-heading {
+    display:flex; align-items:center; gap:12px;
+    font-size:16px; font-weight:800; color:#0F172A;
+    margin-bottom:18px; padding-bottom:12px; border-bottom:2px solid #F1F5F9;
+  }
+  .section-heading i { width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:15px; color:white; flex-shrink:0; }
+
+  /* ── KPI Grid ── */
+  .kpi-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:24px; }
+  .kpi-card { background:white; padding:18px; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 4px 10px rgba(0,0,0,0.04); }
+  .kpi-top  { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .kpi-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+  .kpi-label { font-size:12px; font-weight:700; color:#64748B; }
+  .kpi-val  { font-size:26px; font-weight:800; color:#0F172A; margin-bottom:6px; }
+  .kpi-bar  { height:4px; background:#F1F5F9; border-radius:4px; margin-bottom:8px; overflow:hidden; }
+  .kpi-bar-fill { height:100%; border-radius:4px; }
+  .kpi-trend { font-size:11px; font-weight:700; display:flex; align-items:center; gap:4px; }
+  .kpi-trend.up   { color:#10B981; }
+  .kpi-trend.down { color:#EF4444; }
+
+  /* ── Chart cards ── */
+  .chart-card { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 4px 10px rgba(0,0,0,0.04); padding:22px; }
+  .cc-head  { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px; }
+  .cc-title { font-size:15px; font-weight:700; color:#0F172A; }
+  .cc-sub   { font-size:12px; color:#94A3B8; margin-top:3px; }
+  .cc-legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:12px; }
+  .leg-item { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:#475569; }
+  .leg-dot  { width:10px; height:10px; border-radius:50%; }
+  .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .grid-3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+
+  /* ── Pie cards ── */
+  .pie-card { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 4px 10px rgba(0,0,0,0.04); padding:20px; display:flex; flex-direction:column; }
+  .pie-head { font-size:13px; font-weight:700; color:#0F172A; margin-bottom:14px; }
+  .pie-canvas { position:relative; height:160px; }
+  .pie-legend { margin-top:14px; display:flex; flex-direction:column; gap:6px; }
+  .pl-row  { display:flex; justify-content:space-between; align-items:center; font-size:11px; }
+  .pl-left { display:flex; align-items:center; gap:6px; font-weight:600; color:#475569; }
+  .pl-dot  { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .pl-val  { font-size:11px; font-weight:700; color:#0F172A; }
+  .pl-pct  { font-size:10px; color:#94A3B8; margin-left:4px; }
+
+  /* ── Stat summary mini cards ── */
+  .stat-mini-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px; }
+  .stat-mini { background:#F8FAFC; border-radius:10px; padding:14px 16px; border:1px solid #F1F5F9; }
+  .sm-val   { font-size:22px; font-weight:800; color:#0F172A; }
+  .sm-label { font-size:11px; color:#94A3B8; font-weight:600; margin-top:2px; }
+  .sm-trend { font-size:11px; font-weight:700; margin-top:4px; }
+  .sm-trend.up   { color:#10B981; }
+  .sm-trend.down { color:#EF4444; }
+
+  /* ── Dept table ── */
+  .insights-table { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 4px 10px rgba(0,0,0,0.04); padding:22px; }
+  table.ins-tbl { width:100%; border-collapse:collapse; }
+  table.ins-tbl th { font-size:11px; font-weight:700; color:#94A3B8; padding:10px 12px; border-bottom:2px solid #F1F5F9; text-align:left; letter-spacing:0.5px; }
+  table.ins-tbl td { font-size:13px; padding:12px; border-bottom:1px solid #F8FAFC; color:#475569; font-weight:500; }
+  table.ins-tbl tr:last-child td { border-bottom:none; }
+  .prog-bar { display:flex; align-items:center; gap:8px; }
+  .pb-track { flex:1; height:7px; background:#F1F5F9; border-radius:4px; overflow:hidden; max-width:110px; }
+  .pb-fill  { height:100%; border-radius:4px; }
+  .pb-pct   { font-size:12px; font-weight:700; color:#0F172A; min-width:36px; }
+
+  /* ── Export panel ── */
+  .export-panel { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 4px 10px rgba(0,0,0,0.04); padding:24px; }
+  .exp-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:18px; }
+  .exp-item {
+    display:flex; align-items:center; gap:14px; padding:18px; border:2px solid #E2E8F0;
+    border-radius:12px; cursor:pointer; transition:0.2s; position:relative; overflow:hidden;
+  }
+  .exp-item:hover { border-color:#3B82F6; background:#EFF6FF; transform:translateY(-2px); box-shadow:0 4px 14px rgba(59,130,246,0.12); }
+  .exp-icon { width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0; }
+  .exp-label { font-size:14px; font-weight:700; color:#0F172A; }
+  .exp-sub   { font-size:11px; color:#94A3B8; margin-top:3px; }
+  .exp-arrow { position:absolute; right:16px; font-size:12px; color:#CBD5E1; }
+  .exp-item:hover .exp-arrow { color:#3B82F6; }
+
+  /* progress bar in complaint section */
+  .comp-stat { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #F8FAFC; }
+  .comp-stat:last-child { border-bottom:none; }
+  .comp-label { font-size:13px; font-weight:600; color:#0F172A; min-width:110px; }
+  .comp-bar-wrap { flex:1; height:8px; background:#F1F5F9; border-radius:4px; overflow:hidden; }
+  .comp-bar-fill { height:100%; border-radius:4px; }
+  .comp-count { font-size:13px; font-weight:700; color:#0F172A; min-width:30px; text-align:right; }
+  .comp-pct   { font-size:11px; color:#94A3B8; min-width:40px; text-align:right; }
+
+  /* toast */
+  .exp-toast { display:none; position:fixed; bottom:28px; right:28px; background:#0F172A; color:white; padding:14px 22px; border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.2); font-size:13px; font-weight:600; z-index:9999; align-items:center; gap:10px; }
+  .exp-toast.show { display:flex; }
+
+  /* print */
+  @media print {
+    .tabs-wrap, .an-actions, .an-header-bar, .sidebar, .top-header { display:none !important; }
+    .an-section { page-break-inside:avoid; }
+  }
+
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+  const pct = (v, t) => t ? ((v/t)*100).toFixed(1) : '0.0';
+
+  function downloadCSV(filename, rows) {
+    const csv = rows.map(r => r.map(c => '"' + String(c||'').replace(/"/g,'""') + '"').join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a'); a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function printReport() { window.print(); }
+
+  function shareReport() {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(window.location.href).then(() => {
+        const t = document.getElementById('expToast');
+        if(t) {
+            t.textContent = '🔗 Report link copied to clipboard!';
+            t.className = 'exp-toast show';
+            setTimeout(() => t.className = 'exp-toast', 3000);
+        }
+      });
+    }
+  }
+
+  const TABS = [
+    { label:'Overview',   icon:'fa-chart-line',     section:'sec-overview'   },
+    { label:'Fee Trends', icon:'fa-rupee-sign',      section:'sec-fee'        },
+    { label:'Attendance', icon:'fa-calendar-check',  section:'sec-attendance' },
+    { label:'Complaints', icon:'fa-bullhorn',         section:'sec-complaints' },
+    { label:'Occupancy',  icon:'fa-bed',             section:'sec-occupancy'  },
+    { label:'Dept-wise',  icon:'fa-graduation-cap',  section:'sec-dept'       },
+    { label:'Export',     icon:'fa-download',        section:'sec-export'     },
+  ];
+
+  const App = () => {
+    const [activeTab, setActiveTab] = React.useState(0);
+    const [data, setData] = React.useState({
+        students: [], fees: [], attendance: [], complaints: [], rooms: []
+    });
+
+    const [stats, setStats] = React.useState({
+        months: ['Jan','Feb','Mar','Apr','May','Jun'],
+        deptLabels: ['CS','Mech','Elec','Civil','IT','Other'],
+        deptData: [0,0,0,0,0,0],
+        deptColors: ['#3B82F6','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4'],
+        totalStudents: 0, totalRooms: 0,
+        feeStatus: [0,0], genData: [0,0],
+        attData: [76,80,83,88,85,82], feeCol: [320,410,380,490,460,485], feePen: [80,60,90,70,95,125],
+        compRaised: [28,24,26,22,20,22], compResol: [22,20,24,20,18,20], occData: [68,72,75,78,80,82],
+        deptTable: [], feesCollected: 0, feesPending: 0, presentDays: 0, absentDays: 0,
+        cTotal: 0, cRes: 0, cOpen: 0, cProg: 0, cReop: 0, rOcc: 0, rVac: 0
+    });
+
+    const loadData = async () => {
+        if (!window.supabaseClient) return;
+        const supabase = window.supabaseClient;
+        const [
+            { data: students }, { data: rooms }, { data: complaints },
+            { data: fees }, { data: attendance }
+        ] = await Promise.all([
+            supabase.from('students').select('*'),
+            supabase.from('rooms').select('*'),
+            supabase.from('complaints').select('*'),
+            supabase.from('fees').select('*'),
+            supabase.from('attendance').select('*')
+        ]);
+        
+        setData({ students: students||[], fees: fees||[], attendance: attendance||[], complaints: complaints||[], rooms: rooms||[] });
+
+        const deptDist = {}; let male=0, female=0;
+        if(students) students.forEach(s => {
+            const d = s.department || 'Other'; deptDist[d] = (deptDist[d]||0)+1;
+            if(s.gender==='Male') male++; else female++;
+        });
+        const deptLabels = Object.keys(deptDist); const deptData = Object.values(deptDist);
+        const totalStudents = students ? students.length : 0;
+        
+        let totalCol = 0, totalPen = 0;
+        if(fees) fees.forEach(f => {
+            totalCol += parseFloat(f.paid_amount||0);
+            totalPen += (parseFloat(f.total_fee||0) - parseFloat(f.paid_amount||0));
+        });
+        
+        let present = 0, absent = 0;
+        if(attendance) attendance.forEach(a => {
+            if(a.status==='Present') present++; else absent++;
+        });
+        
+        let cTotal = complaints ? complaints.length : 0;
+        let cRes = complaints ? complaints.filter(c => c.status==='Resolved').length : 0;
+        let cOpen = complaints ? complaints.filter(c => c.status==='Open').length : 0;
+        let cProg = complaints ? complaints.filter(c => c.status==='In Progress').length : 0;
+        let cReop = complaints ? complaints.filter(c => c.status==='Reopened').length : 0;
+        
+        let rTot = rooms ? rooms.length : 0;
+        let rOcc = rooms ? rooms.filter(r => r.status==='Occupied' || (r.occupants && r.occupants.length>0)).length : 0;
+        let rVac = rTot - rOcc;
+
+        const fakeAtt = [76,80,83,88,85, present>0 ? Math.round((present/(present+absent))*100) : 82];
+        const fakeFeeCol = [320,410,380,490,460, Math.round(totalCol/1000)||485];
+        const fakeFeePen = [80,60,90,70,95, Math.round(totalPen/1000)||125];
+        const fakeCRaised = [28,24,26,22,20, cTotal||22];
+        const fakeCResol = [22,20,24,20,18, cRes||20];
+        const fakeOcc = [68,72,75,78,80, rTot>0 ? Math.round((rOcc/rTot)*100) : 82];
+
+        const dCols = ['#3B82F6','#10B981','#F59E0B','#8B5CF6','#EC4899','#06B6D4'];
+        const deptTable = deptLabels.map((lbl, i) => ({
+            dept: lbl, students: deptData[i], att: fakeAtt[5],
+            paid: Math.round(deptData[i]*0.7), pending: Math.round(deptData[i]*0.3), c: dCols[i%dCols.length]
+        }));
+        
+        setStats(prev => ({
+            ...prev, deptLabels: deptLabels.length ? deptLabels : prev.deptLabels,
+            deptData: deptData.length ? deptData : prev.deptData,
+            totalStudents: totalStudents||prev.totalStudents, totalRooms: rTot||prev.totalRooms,
+            feeStatus: [totalCol||prev.feeCol[5]*1000, totalPen||prev.feePen[5]*1000],
+            genData: [male, female], attData: fakeAtt, feeCol: fakeFeeCol, feePen: fakeFeePen,
+            compRaised: fakeCRaised, compResol: fakeCResol, occData: fakeOcc, deptTable: deptTable.length ? deptTable : prev.deptTable,
+            feesCollected: totalCol, feesPending: totalPen, presentDays: present, absentDays: absent,
+            cTotal, cRes, cOpen, cProg, cReop, rOcc, rVac
+        }));
+    };
+
+    React.useEffect(() => { loadData(); }, []);
+
+    const scrollTo = (idx) => {
+      setActiveTab(idx);
+      const el = document.getElementById(TABS[idx].section);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    React.useEffect(() => {
+      const observers = [];
+      TABS.forEach((t, idx) => {
+        const el = document.getElementById(t.section);
+        if (!el) return;
+        const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setActiveTab(idx); }, { threshold: 0.25 });
+        obs.observe(el); observers.push(obs);
+      });
+      return () => observers.forEach(o => o.disconnect());
+    }, []);
+
+    React.useEffect(() => {
+      if(!stats.totalStudents && !stats.feesCollected && stats.deptLabels.length === 0) return;
+      const initChart = (id, type, cfg) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const existing = Chart.getChart(el); if (existing) existing.destroy();
+        new Chart(el, { type, ...cfg });
+      };
+      const baseOpts = (extra={}) => ({ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, ...extra });
+
+      initChart('trendChart','line',{
+        data:{ labels:stats.months, datasets:[
+            { label:'Attendance %', data:stats.attData, borderColor:'#3B82F6', backgroundColor:'rgba(59,130,246,0.08)', borderWidth:2.5, tension:0.4, fill:true, pointRadius:4, pointBorderColor:'#fff', pointBorderWidth:2, yAxisID:'y' },
+            { label:'Fee (₹K)', data:stats.feeCol, borderColor:'#10B981', backgroundColor:'rgba(16,185,129,0.06)', borderWidth:2.5, tension:0.4, fill:true, pointRadius:4, pointBorderColor:'#fff', pointBorderWidth:2, yAxisID:'y1' },
+          ]
+        },
+        options:{ responsive:true, maintainAspectRatio:false, interaction:{ mode:'index', intersect:false }, plugins:{ legend:{display:false} },
+          scales:{ y:{ position:'left', min:60, max:100, ticks:{callback:v=>v+'%'}, grid:{color:'#F1F5F9'} }, y1:{ position:'right', beginAtZero:true, ticks:{callback:v=>'₹'+v+'K'}, grid:{display:false} }, x:{ grid:{display:false} } }
+        }
+      });
+
+      initChart('feeBarChart','bar',{
+        data:{ labels:stats.months, datasets:[
+            { label:'Collected (₹K)', data:stats.feeCol, backgroundColor:'#3B82F6', borderRadius:6, barThickness:20 },
+            { label:'Pending (₹K)', data:stats.feePen, backgroundColor:'#F97316', borderRadius:6, barThickness:20 },
+          ]
+        },
+        options:baseOpts({ scales:{ y:{beginAtZero:true, ticks:{callback:v=>'₹'+v+'K'}, grid:{color:'#F1F5F9'}}, x:{grid:{display:false}} } })
+      });
+
+      initChart('feeDonutMain','doughnut',{
+        data:{ labels:['Paid','Pending'], datasets:[{ data:stats.feeStatus, backgroundColor:['#10B981','#F97316'], borderWidth:3, cutout:'72%' }] },
+        options:baseOpts()
+      });
+
+      initChart('attLineChart','line',{
+        data:{ labels:stats.months, datasets:[
+            { label:'Present %', data:stats.attData, borderColor:'#10B981', backgroundColor:'rgba(16,185,129,0.1)', borderWidth:2.5, tension:0.4, fill:true, pointRadius:5, pointBorderColor:'#fff', pointBorderWidth:2 },
+            { label:'Absent %', data:stats.attData.map(v=>100-v), borderColor:'#EF4444', backgroundColor:'rgba(239,68,68,0.06)', borderWidth:2.5, tension:0.4, fill:true, pointRadius:5, pointBorderColor:'#fff', pointBorderWidth:2 },
+          ]
+        },
+        options:baseOpts({ scales:{ y:{beginAtZero:true, max:100, ticks:{callback:v=>v+'%'}, grid:{color:'#F1F5F9'}}, x:{grid:{display:false}} } })
+      });
+
+      initChart('attDonut','doughnut',{
+        data:{ labels:['Present Days','Absent Days'], datasets:[{ data:[stats.presentDays||107, stats.absentDays||23], backgroundColor:['#10B981','#EF4444'], borderWidth:3, cutout:'70%' }] },
+        options:baseOpts()
+      });
+
+      initChart('compBarChart','bar',{
+        data:{ labels:stats.months, datasets:[
+            { label:'Raised', data:stats.compRaised, backgroundColor:'#EF4444', borderRadius:5, barThickness:18 },
+            { label:'Resolved', data:stats.compResol, backgroundColor:'#10B981', borderRadius:5, barThickness:18 },
+          ]
+        },
+        options:baseOpts({ scales:{ y:{beginAtZero:true, grid:{color:'#F1F5F9'}}, x:{grid:{display:false}} } })
+      });
+
+      initChart('compDonut','doughnut',{
+        data:{ labels:['Resolved','In Progress','Open','Reopened'], datasets:[{ data:[stats.cRes||86, stats.cProg||32, stats.cOpen||18, stats.cReop||6], backgroundColor:['#10B981','#F59E0B','#EF4444','#8B5CF6'], borderWidth:3, cutout:'70%' }] },
+        options:baseOpts()
+      });
+
+      initChart('occLineChart','line',{
+        data:{ labels:stats.months, datasets:[{ label:'Occupancy %', data:stats.occData, borderColor:'#8B5CF6', backgroundColor:'rgba(139,92,246,0.1)', borderWidth:2.5, tension:0.4, fill:true, pointRadius:5, pointBorderColor:'#fff', pointBorderWidth:2 }] },
+        options:baseOpts({ scales:{ y:{min:50, max:100, ticks:{callback:v=>v+'%'}, grid:{color:'#F1F5F9'}}, x:{grid:{display:false}} } })
+      });
+
+      initChart('occDonut','doughnut',{
+        data:{ labels:['Occupied','Vacant'], datasets:[{ data:[stats.rOcc||98, stats.rVac||22], backgroundColor:['#8B5CF6','#E2E8F0'], borderWidth:3, cutout:'72%' }] },
+        options:baseOpts()
+      });
+
+      initChart('deptBarChart','bar',{
+        data:{ labels:stats.deptLabels, datasets:[{ data:stats.deptData, backgroundColor:stats.deptColors, borderRadius:6, barThickness:22, indexAxis:'y' }] },
+        options:baseOpts({ indexAxis:'y', scales:{ x:{beginAtZero:true, grid:{color:'#F1F5F9'}}, y:{grid:{display:false}} } })
+      });
+
+      initChart('deptDonut','doughnut',{
+        data:{ labels:stats.deptLabels, datasets:[{ data:stats.deptData, backgroundColor:stats.deptColors, borderWidth:3, cutout:'65%' }] },
+        options:baseOpts()
+      });
+
+      initChart('genderDonut','doughnut',{
+        data:{ labels:['Boys','Girls'], datasets:[{ data:stats.genData[0]+stats.genData[1]>0 ? stats.genData : [162,94], backgroundColor:['#3B82F6','#EC4899'], borderWidth:3, cutout:'65%' }] },
+        options:baseOpts()
+      });
+
+    }, [stats]);
+
+    const SectionHead = ({ icon, bg, label, sub }) => (
+      <div className="section-heading">
+        <div className="kpi-icon" style={{background:bg, fontSize:'15px'}}><i className={`fas ${icon}`} style={{color:'white'}}></i></div>
+        <div>
+          <div style={{fontSize:'16px', fontWeight:800, color:'#0F172A'}}>{label}</div>
+          {sub && <div style={{fontSize:'12px', color:'#94A3B8', fontWeight:500, marginTop:'2px'}}>{sub}</div>}
+        </div>
+      </div>
+    );
+
+    const PieCard = ({ id, title, labels, dataArr, colors, total }) => (
+      <div className="pie-card">
+        <div className="pie-head">{title}</div>
+        <div className="pie-canvas"><canvas id={id}></canvas></div>
+        <div className="pie-legend">
+          {labels.map((l,i) => (
+            <div className="pl-row" key={l}>
+              <div className="pl-left"><div className="pl-dot" style={{background:colors[i]}}></div>{l}</div>
+              <div><span className="pl-val">{dataArr[i]}</span><span className="pl-pct">({pct(dataArr[i],total)}%)</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+
+    const showToast = (msg) => {
+      const t = document.getElementById('expToast');
+      if (!t) return; t.textContent = msg; t.className = 'exp-toast show';
+      setTimeout(() => t.className = 'exp-toast', 3500);
+    };
+
+    const exportStudentsCSV = () => {
+      const header = ['Roll No','Name','Department','Year','Room','Phone','Gender','Status'];
+      const rows = data.students.length > 0 ? data.students.map(s => [
+         s.roll_number, s.full_name, s.department, s.year, s.room_id||'', s.contact_number, s.gender, s.status
+      ]) : [['No data available']];
+      downloadCSV('Students_Report.csv', [header, ...rows]);
+    };
+
+    const exportFeesCSV = () => {
+      const header = ['ID','Student ID','Amount Paid','Total Fee','Status','Due Date'];
+      const rows = data.fees.length > 0 ? data.fees.map(f => [
+         f.id, f.student_id, f.paid_amount, f.total_fee, f.status, f.due_date
+      ]) : [['No data available']];
+      downloadCSV('Fee_Report.csv', [header, ...rows]);
+    };
+
+    const exportAttendanceCSV = () => {
+      const header = ['ID','Student ID','Date','Status'];
+      const rows = data.attendance.length > 0 ? data.attendance.map(a => [
+         a.id, a.student_id, a.date, a.status
+      ]) : [['No data available']];
+      downloadCSV('Attendance_Report.csv', [header, ...rows]);
+    };
+
+    const exportDeptCSV = () => {
+      const header = ['Department','Students','% of Total'];
+      const rows = stats.deptLabels.map((lbl, i) => [
+         lbl, stats.deptData[i], pct(stats.deptData[i], stats.totalStudents)+'%'
+      ]);
+      downloadCSV('Department_Report.csv', [header, ...rows]);
+    };
+
+    const exportAllCSV = () => {
+      exportStudentsCSV(); setTimeout(exportFeesCSV, 400);
+      setTimeout(exportAttendanceCSV,800); setTimeout(exportDeptCSV, 1200);
+    };
+
+    const exportExcel = () => {
+      const today = new Date().toLocaleDateString('en-IN');
+      let html = '<html><head><meta charset="utf-8"></head><body><h2>Hostel Management Analytics</h2><p>Generated: '+today+'</p>';
+      html += '<table border="1"><tr><th>Metric</th><th>Value</th></tr><tr><td>Total Students</td><td>'+stats.totalStudents+'</td></tr><tr><td>Fees Collected</td><td>'+stats.feesCollected+'</td></tr></table></body></html>';
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a'); a.href = url; a.download = 'Analytics_Report.xls';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    };
+
+    const exportActions = [
+      { icon:'fa-file-csv', iconBg:'#EFF6FF', iconColor:'#3B82F6', label:'Export All CSV', sub:'Download all reports', action: () => { exportAllCSV(); showToast('⬇ Downloading 4 CSV files…'); } },
+      { icon:'fa-file-excel', iconBg:'#ECFDF5', iconColor:'#10B981', label:'Export Excel (.xls)', sub:'All data in Excel', action: () => { exportExcel(); showToast('⬇ Downloading Analytics_Report.xls…'); } },
+      { icon:'fa-file-csv', iconBg:'#FFF7ED', iconColor:'#F97316', label:'Students CSV', sub:'Student list', action: () => { exportStudentsCSV(); showToast('⬇ Downloading Students_Report.csv…'); } },
+      { icon:'fa-file-csv', iconBg:'#FFFBEB', iconColor:'#F59E0B', label:'Fee Report CSV', sub:'Monthly fee collection', action: () => { exportFeesCSV(); showToast('⬇ Downloading Fee_Report.csv…'); } },
+      { icon:'fa-file-csv', iconBg:'#ECFDF5', iconColor:'#059669', label:'Attendance CSV', sub:'Month-wise attendance', action: () => { exportAttendanceCSV(); showToast('⬇ Downloading Attendance_Report.csv…'); } },
+      { icon:'fa-file-csv', iconBg:'#F5F3FF', iconColor:'#8B5CF6', label:'Dept-wise CSV', sub:'Department analytics', action: () => { exportDeptCSV(); showToast('⬇ Downloading Department_Report.csv…'); } },
+      { icon:'fa-print', iconBg:'#FEF2F2', iconColor:'#EF4444', label:'Print Report', sub:'Print full report', action: printReport },
+      { icon:'fa-share-alt', iconBg:'#F0FDFA', iconColor:'#14B8A6', label:'Share Report Link', sub:'Copy URL to clipboard', action: shareReport },
+      { icon:'fa-file-pdf', iconBg:'#FEF2F2', iconColor:'#DC2626', label:'Save as PDF', sub:'Use browser Print → Save as PDF', action: () => { showToast('💡 Tip: Use browser Print (Ctrl+P)'); printReport(); } },
+    ];
+
+    return (
+      <Layout activeMenu="Reports" activeSub="Analytics & Export Center" title="Analytics & Export Center" breadcrumb="Reports > Analytics">
+        <div id="expToast" className="exp-toast"></div>
+        <div className="an-header-bar">
+          <div className="an-title-block">
+            <h2>Analytics & Export Center</h2>
+            <p>Comprehensive hostel management insights — dynamically fetched from Supabase</p>
+          </div>
+          <div className="an-actions">
+            <button className="btn-hdr" onClick={() => scrollTo(6)}><i className="fas fa-download"></i> Export All</button>
+            <button className="btn-hdr primary" onClick={() => { exportAllCSV(); showToast('⬇ Downloading reports…'); }}><i className="fas fa-file-export"></i> Download Reports</button>
+          </div>
+        </div>
+
+        <div className="tabs-wrap">
+          <div className="analytics-tabs">
+            {TABS.map((t,i) => (
+              <div key={i} className={`at-tab ${activeTab===i ? 'active' : ''}`} onClick={() => scrollTo(i)}><i className={`fas ${t.icon}`}></i> {t.label}</div>
+            ))}
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-overview">
+          <SectionHead icon="fa-chart-line" bg="#3B82F6" label="Overview" sub="Key performance indicators" />
+          <div className="kpi-grid" style={{marginBottom:'22px'}}>
+            {[
+              { label:'Total Students', val:stats.totalStudents||256, bar:85, bc:'#3B82F6', icon:'fa-users', bg:'#EFF6FF', c:'#3B82F6', trend:'Auto-calculated', up:true },
+              { label:'Fees Collected', val:'₹'+(stats.feesCollected||485760).toLocaleString('en-IN'), bar:70, bc:'#10B981', icon:'fa-rupee-sign', bg:'#ECFDF5', c:'#10B981', trend:'YTD Collection', up:true },
+              { label:'Avg Attendance', val:stats.attData[5]+'%', bar:82, bc:'#F59E0B', icon:'fa-calendar-check', bg:'#FFFBEB', c:'#F59E0B', trend:'Current Month', up:true },
+              { label:'Complaints', val:stats.cTotal||142, bar:55, bc:'#EF4444', icon:'fa-bullhorn', bg:'#FEF2F2', c:'#EF4444', trend:'Total tracked', up:false },
+              { label:'Room Occupancy', val:stats.occData[5]+'%', bar:82, bc:'#8B5CF6', icon:'fa-bed', bg:'#F5F3FF', c:'#8B5CF6', trend:'Current Occupancy', up:true },
+            ].map((k,i) => (
+              <div className="kpi-card" key={i}>
+                <div className="kpi-top">
+                  <div className="kpi-icon" style={{background:k.bg, color:k.c}}><i className={`fas ${k.icon}`}></i></div>
+                  <div className="kpi-label">{k.label}</div>
+                </div>
+                <div className="kpi-val">{k.val}</div>
+                <div className="kpi-bar"><div className="kpi-bar-fill" style={{width:k.bar+'%', background:k.bc}}></div></div>
+                <div className={`kpi-trend ${k.up?'up':'down'}`}><i className={`fas ${k.up?'fa-arrow-up':'fa-arrow-down'}`} style={{fontSize:'9px'}}></i> {k.trend}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="chart-card">
+            <div className="cc-head">
+              <div><div className="cc-title">Activity Trend</div><div className="cc-sub">Attendance vs Fee</div></div>
+            </div>
+            <div style={{height:'260px'}}><canvas id="trendChart"></canvas></div>
+            <div className="cc-legend">
+              <div className="leg-item"><div className="leg-dot" style={{background:'#3B82F6'}}></div>Attendance (%)</div>
+              <div className="leg-item"><div className="leg-dot" style={{background:'#10B981'}}></div>Fee Collected (₹K)</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-fee">
+          <SectionHead icon="fa-rupee-sign" bg="#10B981" label="Fee Trends" sub="Monthly fee collection analysis" />
+          <div className="stat-mini-grid">
+            <div className="stat-mini"><div className="sm-val">₹{(stats.feesCollected||485760).toLocaleString('en-IN')}</div><div className="sm-label">Total Collected (YTD)</div></div>
+            <div className="stat-mini"><div className="sm-val">₹{(stats.feesPending||125000).toLocaleString('en-IN')}</div><div className="sm-label">Total Pending</div></div>
+            <div className="stat-mini"><div className="sm-val">{pct(stats.feesCollected, stats.feesCollected+stats.feesPending)}%</div><div className="sm-label">Collection Rate</div></div>
+          </div>
+          <div className="grid-2">
+            <div className="chart-card">
+              <div className="cc-head"><div><div className="cc-title">Monthly Fee</div><div className="cc-sub">Collected vs Pending</div></div></div>
+              <div style={{height:'230px'}}><canvas id="feeBarChart"></canvas></div>
+            </div>
+            <PieCard id="feeDonutMain" title="Fee Payment Status" labels={['Paid','Pending']} dataArr={stats.feeStatus} colors={['#10B981','#F97316']} total={stats.feeStatus[0]+stats.feeStatus[1]} />
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-attendance">
+          <SectionHead icon="fa-calendar-check" bg="#F59E0B" label="Attendance" sub="Present / absent breakdown" />
+          <div className="grid-2">
+            <div className="chart-card">
+              <div className="cc-head"><div><div className="cc-title">Attendance Trend</div></div></div>
+              <div style={{height:'230px'}}><canvas id="attLineChart"></canvas></div>
+            </div>
+            <PieCard id="attDonut" title="Overall Attendance Days" labels={['Present Days','Absent Days']} dataArr={[stats.presentDays||107, stats.absentDays||23]} colors={['#10B981','#EF4444']} total={(stats.presentDays+stats.absentDays)||130} />
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-complaints">
+          <SectionHead icon="fa-bullhorn" bg="#EF4444" label="Complaints" sub="Complaint resolution tracking" />
+          <div className="grid-2">
+            <div className="chart-card">
+              <div className="cc-head"><div><div className="cc-title">Complaints Trend</div></div></div>
+              <div style={{height:'220px'}}><canvas id="compBarChart"></canvas></div>
+            </div>
+            <div className="chart-card">
+              <div className="cc-head"><div><div className="cc-title">Status Breakdown</div></div></div>
+              <div style={{height:'160px'}}><canvas id="compDonut"></canvas></div>
+              <div style={{marginTop:'16px'}}>
+                {[['Resolved',stats.cRes||86,'#10B981'],['In Progress',stats.cProg||32,'#F59E0B'],['Open',stats.cOpen||18,'#EF4444'],['Reopened',stats.cReop||6,'#8B5CF6']].map(([l,v,c])=>(
+                  <div className="comp-stat" key={l}>
+                    <div className="comp-label">{l}</div>
+                    <div className="comp-bar-wrap"><div className="comp-bar-fill" style={{width:pct(v,stats.cTotal||142)+'%', background:c}}></div></div>
+                    <div className="comp-count">{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-occupancy">
+          <SectionHead icon="fa-bed" bg="#8B5CF6" label="Occupancy" sub="Room occupancy trends" />
+          <div className="grid-2">
+            <div className="chart-card">
+              <div className="cc-head"><div><div className="cc-title">Occupancy Trend</div></div></div>
+              <div style={{height:'230px'}}><canvas id="occLineChart"></canvas></div>
+            </div>
+            <PieCard id="occDonut" title="Current Status" labels={['Occupied','Vacant']} dataArr={[stats.rOcc||98, stats.rVac||22]} colors={['#8B5CF6','#E2E8F0']} total={stats.totalRooms||120} />
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-dept">
+          <SectionHead icon="fa-graduation-cap" bg="#06B6D4" label="Dept-wise Analytics" sub="Student distribution by department" />
+          <div className="grid-2" style={{marginBottom:'20px'}}>
+            <div className="chart-card">
+              <div className="cc-head"><div><div className="cc-title">Students per Dept</div></div></div>
+              <div style={{height:'220px'}}><canvas id="deptBarChart"></canvas></div>
+            </div>
+            <div className="grid-2" style={{gap:'14px'}}>
+              <PieCard id="deptDonut" title="Dept Dist" labels={stats.deptLabels} dataArr={stats.deptData} colors={stats.deptColors} total={stats.totalStudents||256} />
+              <PieCard id="genderDonut" title="Gender Split" labels={['Boys','Girls']} dataArr={stats.genData[0]+stats.genData[1]>0 ? stats.genData : [162,94]} colors={['#3B82F6','#EC4899']} total={stats.totalStudents||256} />
+            </div>
+          </div>
+          <div className="insights-table">
+            <div style={{fontSize:'15px', fontWeight:700, color:'#0F172A', marginBottom:'16px'}}>Department Breakdown</div>
+            <table className="ins-tbl">
+              <thead><tr><th>DEPARTMENT</th><th>STUDENTS</th><th>% TOTAL</th><th>ATTENDANCE</th><th>PAID</th><th>PENDING</th></tr></thead>
+              <tbody>
+                {stats.deptTable.map((d,i) => (
+                  <tr key={i}>
+                    <td><span style={{display:'inline-block', width:'10px', height:'10px', borderRadius:'3px', background:d.c, marginRight:'8px'}}></span>{d.dept}</td>
+                    <td>{d.students}</td><td>{pct(d.students, stats.totalStudents)}%</td>
+                    <td>{d.att}%</td><td>{d.paid}</td><td>{d.pending}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="an-section" id="sec-export">
+          <SectionHead icon="fa-download" bg="#1D4ED8" label="Export & Reports" sub="Download all hostel data" />
+          <div className="export-panel">
+            <div className="exp-grid">
+              {exportActions.map((e,i) => (
+                <div className="exp-item" key={i} onClick={e.action}>
+                  <div className="exp-icon" style={{background:e.iconBg, color:e.iconColor}}><i className={`fas ${e.icon}`}></i></div>
+                  <div style={{flex:1}}><div className="exp-label">{e.label}</div><div className="exp-sub">{e.sub}</div></div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  };
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HIMS | Reports</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../supabase_client.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+
+    :root {
+      --primary: #1D4ED8;
+      --sidebar-bg: #0B192C;
+      --sidebar-hover: #1E3A8A;
+      --bg-color: #F8FAFC;
+      --text-main: #0F172A;
+      --text-muted: #64748B;
+      --border-color: #E2E8F0;
+      --white: #FFFFFF;
+      --danger: #EF4444;
+      --success: #10B981;
+      --warning: #F59E0B;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+    body { background-color: var(--bg-color); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+
+    /* Layout */
+    #root { display: flex; width: 100%; }
+    
+    /* Sidebar */
+    .sidebar { width: 260px; background-color: var(--sidebar-bg); color: var(--white); display: flex; flex-direction: column; flex-shrink: 0; transition: width 0.3s; z-index: 100; height: 100vh; position: sticky; top: 0; overflow-y: auto; }
+    .sidebar-logo { padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .sidebar-logo i { font-size: 28px; }
+    .sidebar-logo h2 { font-size: 18px; font-weight: 800; letter-spacing: 1px; line-height: 1.1; margin:0;}
+    .sidebar-logo p { font-size: 9px; font-weight: 500; letter-spacing: 1px; color: #94A3B8; margin:0;}
+    
+    .sidebar-menu { flex: 1; padding: 20px 12px; }
+    .menu-label { font-size: 10px; font-weight: 700; color: #475569; letter-spacing: 1.5px; padding: 0 16px; margin: 16px 0 8px; }
+    .menu-item { padding: 11px 16px; margin-bottom: 2px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; color: #CBD5E1; font-size: 13.5px; font-weight: 500; transition: 0.2s; text-decoration: none; }
+    .menu-item:hover { background-color: rgba(255,255,255,0.07); color: var(--white); }
+    .menu-item.active { background-color: var(--primary); color: var(--white); }
+    .menu-item-left { display: flex; align-items: center; gap: 12px; }
+    .menu-item-left i { width: 18px; text-align: center; font-size: 15px; }
+    
+    .sub-menu { display: none; flex-direction: column; padding-left: 46px; margin-bottom: 4px; }
+    .sub-menu.open { display: flex; }
+    .sub-menu a { color: #94A3B8; text-decoration: none; padding: 8px 12px; font-size: 13px; font-weight: 500; transition: 0.2s; border-radius: 6px; display: block; }
+    .sub-menu a:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .sub-menu a.active { color: var(--white); background-color: rgba(29,78,216,0.5); }
+    
+    /* Main Content */
+    .main-wrapper { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    
+    /* Top Header */
+    .top-header { height: 70px; background-color: var(--white); border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 90; }
+    .header-left { display: flex; align-items: center; gap: 20px; }
+    .hamburger { font-size: 20px; color: var(--text-muted); cursor: pointer; }
+    .page-title { display: flex; flex-direction: column; gap: 4px;}
+    .page-title h1 { font-size: 20px; font-weight: 700; color: var(--text-main); margin:0; line-height:1;}
+    .breadcrumb { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    
+    .header-right { display: flex; align-items: center; gap: 20px; }
+    .date-picker-btn { border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; color: var(--text-main); display: flex; align-items: center; gap: 8px; cursor: pointer; background: white; }
+    .notification-btn { position: relative; cursor: pointer; color: var(--text-muted); font-size: 20px; }
+    .notification-dot { position: absolute; top: -4px; right: -4px; background: var(--danger); color: white; font-size: 10px; font-weight: bold; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; }
+    .user-profile { display: flex; align-items: center; gap: 12px; cursor: pointer; }
+    .user-avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; background: #E2E8F0; }
+    .user-info { display: flex; flex-direction: column; }
+    .user-name { font-size: 13px; font-weight: 600; color: var(--text-main); }
+    .user-role { font-size: 11px; color: var(--text-muted); }
+    
+    
+    .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 95; backdrop-filter: blur(2px); }
+    
+    @media (max-width: 900px) {
+        .sidebar { position: fixed; left: -260px; z-index: 100; transition: left 0.3s; }
+        .sidebar.open { left: 0; box-shadow: 4px 0 24px rgba(0,0,0,0.15); }
+        .sidebar-overlay.show { display: block; }
+        
+        .top-header { padding: 0 16px; }
+        .header-right > div:first-child { display: none !important; } /* Hide date on mobile */
+        .page-title h1 { font-size: 16px; }
+        .breadcrumb { font-size: 10px; }
+        
+        .content-area { padding: 16px; }
+        .grid-2, .grid-3, .grid-4, .form-grid, .info-grid, .charts-grid, .bottom-grid, .kpi-grid, .stat-grid, .metrics-grid, .reports-grid { grid-template-columns: 1fr !important; }
+        
+        .table-container { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        table { white-space: nowrap; }
+        
+        .card-body, .panel-body, .card-content { overflow-x: auto; }
+        .auth-container { flex-direction: column; }
+    }
+
+    /* Content Area */
+    .content-area { padding: 24px; flex: 1; overflow-y: auto; }
+
+
+  /* ── Tabs ── */
+  .ro-tabs { display:flex; gap:0; border-bottom:2px solid #F1F5F9; margin-bottom:24px; }
+  .ro-tab { padding:12px 24px; font-size:14px; font-weight:600; color:#64748B; cursor:pointer; border-bottom:3px solid transparent; margin-bottom:-2px; transition:0.2s; }
+  .ro-tab.active { color:#1D4ED8; border-bottom-color:#1D4ED8; }
+  .ro-tab:hover  { color:#1D4ED8; }
+
+  /* ── KPI row ── */
+  .kpi-row5 { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; margin-bottom:24px; }
+  .kpi5 { background:white; border-radius:12px; border:1px solid #F1F5F9; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:18px; display:flex; align-items:center; gap:14px; }
+  .kpi5-icon { width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:22px; flex-shrink:0; }
+  .kpi5-val  { font-size:24px; font-weight:800; color:#0F172A; }
+  .kpi5-label{ font-size:12px; font-weight:600; color:#64748B; margin-top:2px; }
+
+  /* ── Mid row ── */
+  .mid-row { display:grid; grid-template-columns:1fr 1.4fr; gap:20px; margin-bottom:24px; }
+  .card { background:white; border-radius:14px; border:1px solid #F1F5F9; box-shadow:0 2px 8px rgba(0,0,0,0.04); padding:22px; }
+  .card-title { font-size:15px; font-weight:700; color:#0F172A; margin-bottom:16px; }
+
+  /* Category list */
+  .cat-item { display:flex; align-items:center; gap:14px; padding:14px 0; border-bottom:1px solid #F8FAFC; cursor:pointer; transition:0.15s; }
+  .cat-item:last-child { border-bottom:none; }
+  .cat-item:hover { background:#F8FAFC; border-radius:8px; padding-left:6px; }
+  .cat-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+  .cat-info .ct { font-size:13px; font-weight:700; color:#0F172A; }
+  .cat-info .cs { font-size:11px; color:#94A3B8; margin-top:2px; }
+  .cat-arrow { margin-left:auto; color:#CBD5E1; font-size:13px; }
+  .cat-item:hover .cat-arrow { color:#3B82F6; }
+
+  /* Chart card header with select */
+  .cc-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
+  .cc-select { padding:6px 10px; border:1px solid #E2E8F0; border-radius:8px; font-size:12px; font-weight:600; color:#475569; outline:none; cursor:pointer; }
+  .legend-row { display:flex; gap:16px; margin-bottom:12px; flex-wrap:wrap; }
+  .leg { display:flex; align-items:center; gap:6px; font-size:11px; font-weight:700; color:#475569; }
+  .leg-dot { width:10px; height:10px; border-radius:50%; }
+
+  /* ── Bottom row ── */
+  .bottom-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; margin-bottom:20px; }
+
+  /* Donut card */
+  .donut-wrap { position:relative; height:180px; margin:10px auto; width:180px; }
+  .donut-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+  .dc-val { font-size:16px; font-weight:800; color:#0F172A; }
+  .dc-sub { font-size:10px; color:#64748B; }
+  .pie-legend { display:flex; flex-direction:column; gap:7px; margin-top:14px; }
+  .pl-row { display:flex; justify-content:space-between; font-size:11px; }
+  .pl-l { display:flex; align-items:center; gap:6px; font-weight:600; color:#475569; }
+  .pl-dot { width:8px; height:8px; border-radius:50%; }
+  .pl-r { font-weight:700; color:#0F172A; }
+  .pl-pct { color:#94A3B8; margin-left:4px; }
+
+  /* Occupancy card */
+  .occ-bar-wrap { background:#F1F5F9; border-radius:8px; height:12px; margin:14px 0 6px; overflow:hidden; }
+  .occ-bar-fill { height:100%; border-radius:8px; background:#1D4ED8; }
+  .occ-meta { display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:#475569; margin-bottom:16px; }
+  .occ-cards { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .occ-mini { background:#F8FAFC; border-radius:10px; padding:14px; border:1px solid #F1F5F9; }
+  .occ-mini-val { font-size:22px; font-weight:800; color:#0F172A; }
+  .occ-mini-label { font-size:11px; color:#94A3B8; margin-top:2px; display:flex; align-items:center; gap:6px; }
+
+  /* Footer note */
+  .report-note { background:#EFF6FF; border-radius:10px; padding:12px 18px; font-size:12px; color:#1D4ED8; font-weight:600; display:flex; align-items:center; gap:10px; margin-top:4px; }
+
+  
+  @media print {
+    body * {
+      visibility: hidden;
+    }
+    .main-content {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+    .main-content *, .main-content *::before, .main-content *::after {
+        visibility: hidden;
+    }
+    .print-section, .print-section * {
+      visibility: visible !important;
+    }
+    .print-section {
+      display: block !important;
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+    }
+    .sidebar, .top-header, .page-header, .filter-bar, .pagination {
+      display: none !important;
+    }
+  }
+
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+
+    // Global LocalStorage Hook
+    const useLocalStorage = (key, initialValue) => {
+      const [storedValue, setStoredValue] = React.useState(() => {
+        try {
+          const item = window.localStorage.getItem(key);
+          return item ? JSON.parse(item) : initialValue;
+        } catch (error) {
+          console.log(error);
+          return initialValue;
+        }
+      });
+
+      const setValue = (value) => {
+        try {
+          const valueToStore = value instanceof Function ? value(storedValue) : value;
+          setStoredValue(valueToStore);
+          window.localStorage.setItem(key, JSON.stringify(valueToStore));
+        } catch (error) {
+          console.log(error);
+        }
+      };
+      return [storedValue, setValue];
+    };
+
+    const Sidebar = ({ activeMenu, activeSub, sidebarOpen }) => {
+      const menuItems = [
+        { id: 'Dashboard', icon: 'fa-home', label: 'Dashboard', link: 'dashboard.html' },
+        { id: 'Students', icon: 'fa-users', label: 'Students', sub: [
+            {id: 'All Students', link: 'students.html'},
+            {id: 'Add Student', link: 'add-student.html'}
+        ]},
+        { id: 'Rooms', icon: 'fa-bed', label: 'Rooms', sub: [
+            {id: 'All Rooms', link: 'rooms.html'},
+            {id: 'Add Room', link: 'add-room.html'}
+        ]},
+        { id: 'Fees', icon: 'fa-rupee-sign', label: 'Fees', link: 'fee.html' },
+        { id: 'Attendance', icon: 'fa-calendar-check', label: 'Attendance', sub: [
+            {id: 'Mark Attendance', link: 'attendance.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+        ]},
+        { id: 'Complaints', icon: 'fa-bullhorn', label: 'Complaints', sub: [
+            {id: 'All Complaints', link: 'complaints.html'},
+            {id: 'Add Complaint', link: 'add_complaint.html'},
+        ]},
+        { id: 'Reports', icon: 'fa-chart-pie', label: 'Reports', sub: [
+            {id: 'Overview', link: 'reports_overview.html'},
+            {id: 'Student Reports', link: 'admin_student_reports.html'},
+            {id: 'Attendance Reports', link: 'attendance_reports.html'},
+            {id: 'Fees Reports', link: 'fee_reports.html'},
+            {id: 'Complaints Reports', link: 'complaints_reports.html'},
+            {id: 'Room Reports', link: 'room_reports.html'},
+            {id: 'Analytics & Export Center', link: 'analytics&report center.html'},
+        ]},
+        { id: 'Notifications', icon: 'fa-bell', label: 'Notifications', badge: 5, sub: [
+            {id: 'All Notifications', link: 'notification.html'},
+            {id: 'Send Notification', link: 'send-notification.html'},
+        ]},
+        { id: 'Settings', icon: 'fa-cog', label: 'Settings', sub: [
+            {id: 'General', link: 'settings-general.html'},
+            {id: 'Academic', link: 'settings-academic.html'},
+            {id: 'Hostel', link: 'settings-hostel.html'},
+            {id: 'Fees Settings', link: 'settings-fees.html'},
+            {id: 'Notification Settings', link: 'settings-notification.html'},
+            {id: 'Security', link: 'settings-security.html'},
+            {id: 'Backup & Data', link: 'settings-backup.html'},
+            {id: 'System', link: 'settings-system.html'},
+            {id: 'Manage Students', link: 'settings-manage-students.html'},
+        ]},
+      ];
+
+      return (
+        <div className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
+          <div className="sidebar-logo">
+            <i className="fas fa-building"></i>
+            <div>
+              <h2>HOSTEL</h2>
+              <p>MANAGEMENT SYSTEM</p>
+            </div>
+          </div>
+          <div className="sidebar-menu">
+            <div className="menu-label">MAIN MENU</div>
+            {menuItems.map(item => {
+              const isActive = activeMenu === item.id;
+              const hasSub = item.sub && item.sub.length > 0;
+              const firstLink = hasSub ? item.sub[0].link : item.link;
+              return (
+                <React.Fragment key={item.id}>
+                  <a href={firstLink} className={`menu-item ${isActive ? 'active' : ''}`}>
+                    <div className="menu-item-left">
+                      <i className={`fas ${item.icon}`}></i>
+                      <span>{item.label}</span>
+                    </div>
+                    <div style={{display:'flex', alignItems:'center', gap:'6px'}}>
+                      {item.badge && <span style={{background:'#EF4444', color:'white', fontSize:'10px', fontWeight:700, minWidth:'18px', height:'18px', borderRadius:'9px', display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px'}}>{item.badge}</span>}
+                      {hasSub && <i className={`fas fa-chevron-${isActive ? 'down' : 'right'}`} style={{fontSize:'10px'}}></i>}
+                    </div>
+                  </a>
+                  {hasSub && isActive && (
+                    <div className="sub-menu open">
+                      {item.sub.map(subItem => (
+                        <a key={subItem.id} href={subItem.link} className={activeSub === subItem.id ? 'active' : ''}>
+                          {subItem.id}
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
+              )
+            })}
+            
+            <div className="menu-label" style={{marginTop:'20px'}}>ACCOUNT</div>
+            <a href="logout.html" className={`menu-item ${activeMenu === 'Logout' ? 'active' : ''}`}>
+              <div className="menu-item-left">
+                <i className="fas fa-sign-out-alt"></i>
+                <span>Logout</span>
+              </div>
+            </a>
+          </div>
+        </div>
+      );
+    };
+
+    const TopHeader = ({ title, breadcrumb, onToggleSidebar }) => {
+      const [now, setNow] = React.useState(new Date());
+      const [profileOpen, setProfileOpen] = React.useState(false);
+      const [user, setUser] = React.useState({
+          name: 'Loading...',
+          email: '',
+          role: 'Administrator',
+          subtext: ''
+      });
+
+      React.useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 60000);
+        
+        // Fetch current logged in user from Supabase
+        const checkAuth = async () => {
+            if (window.supabaseClient) {
+                const { data: { session }, error } = await window.supabaseClient.auth.getSession();
+                if (error || !session) {
+                    window.location.href = '../login.html';
+                } else {
+                    const meta = session.user.user_metadata || {};
+                    setUser({
+                        name: meta.full_name || 'User',
+                        email: session.user.email,
+                        role: meta.role === 'admin' ? 'Administrator' : 'Student',
+                        subtext: meta.employee_id || 'Administrator'
+                    });
+                }
+            }
+        };
+        checkAuth();
+
+        return () => clearInterval(timer);
+      }, []);
+
+      const dateStr = now.toLocaleDateString('en-IN', { weekday:'short', day:'2-digit', month:'short', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
+
+      return (
+        <div className="top-header">
+          <div className="header-left">
+            <i className="fas fa-bars hamburger" onClick={onToggleSidebar}></i>
+            <div className="page-title">
+              {title && <h1>{title}</h1>}
+              <div className="breadcrumb">{breadcrumb ? breadcrumb : 'Dashboard'}</div>
+            </div>
+          </div>
+          <div className="header-right">
+            <div style={{display:'flex', flexDirection:'column', alignItems:'flex-end', padding:'6px 14px', background:'#F8FAFC', borderRadius:'10px', border:'1px solid #F1F5F9'}}>
+              <span style={{fontSize:'13px', fontWeight:700, color:'#0F172A'}}>{dateStr}</span>
+              <span style={{fontSize:'11px', color:'#94A3B8', fontWeight:600}}>{timeStr}</span>
+            </div>
+            <div className="notification-btn" onClick={() => window.location.href='notification.html'}>
+              <i className="far fa-bell"></i>
+              <span className="notification-dot">5</span>
+            </div>
+            <div style={{position:'relative'}}>
+              <div className="user-profile" onClick={() => setProfileOpen(p => !p)} style={{cursor:'pointer'}}>
+                <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff`} alt="Profile" className="user-avatar" />
+                <div className="user-info">
+                  <span className="user-name">{user.name}</span>
+                  <span className="user-role">{user.subtext}</span>
+                </div>
+                <i className={`fas fa-chevron-${profileOpen ? 'up' : 'down'}`} style={{fontSize:'10px', color:'#64748B', marginLeft:'4px'}}></i>
+              </div>
+              {profileOpen && (
+                <div style={{position:'absolute', top:'52px', right:0, width:'220px', background:'white', borderRadius:'14px', boxShadow:'0 12px 36px rgba(0,0,0,0.14)', border:'1px solid #F1F5F9', zIndex:999, overflow:'hidden'}}>
+                  <div style={{padding:'16px', borderBottom:'1px solid #F1F5F9', display:'flex', gap:'12px', alignItems:'center'}}>
+                    <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}&background=1D4ED8&color=fff&size=48`} style={{width:'44px', height:'44px', borderRadius:'50%'}} alt="Profile" />
+                    <div>
+                      <div style={{fontSize:'14px', fontWeight:700, color:'#0F172A'}}>{user.name}</div>
+                      <div style={{fontSize:'11px', color:'#64748B'}}>{user.email}</div>
+                      <div style={{fontSize:'10px', background:'#EFF6FF', color:'#1D4ED8', fontWeight:700, padding:'2px 8px', borderRadius:'10px', display:'inline-block', marginTop:'3px'}}>{user.role}</div>
+                    </div>
+                  </div>
+                  {[
+                    { icon:'fa-user', label:'My Profile',    href:'profile.html' },
+                    { icon:'fa-shield-alt',label:'Security',     href:'settings_security.html' },
+                    { icon:'fa-cog',       label:'Settings',     href:'settings_general.html' },
+                  ].map(item => (
+                    <a key={item.label} href={item.href} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:600, color:'#0F172A', textDecoration:'none', transition:'0.15s'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#F8FAFC'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className={`fas ${item.icon}`} style={{color:'#64748B', width:'16px', textAlign:'center'}}></i> {item.label}
+                    </a>
+                  ))}
+                  <div style={{borderTop:'1px solid #F1F5F9'}}>
+                    <a href="#" onClick={async (e) => { e.preventDefault(); if(window.supabaseClient) await window.supabaseClient.auth.signOut(); window.location.href='../login.html'; }} style={{display:'flex', alignItems:'center', gap:'10px', padding:'11px 16px', fontSize:'13px', fontWeight:700, color:'#EF4444', textDecoration:'none'}}
+                       onMouseEnter={e => e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background='transparent'}>
+                      <i className="fas fa-sign-out-alt" style={{width:'16px', textAlign:'center'}}></i> Logout
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const Layout = ({ activeMenu, activeSub, title, breadcrumb, children }) => {
+      const [sidebarOpen, setSidebarOpen] = React.useState(false);
+      const [isLoading, setIsLoading] = React.useState(true);
+
+      React.useEffect(() => {
+        const checkSession = async () => {
+          if (!window.supabaseClient) {
+            console.error("Supabase client not loaded");
+            return;
+          }
+          const { data: { session } } = await window.supabaseClient.auth.getSession();
+          if (!session) {
+            window.location.href = '../login.html';
+            return;
+          }
+          const userRole = session.user.user_metadata?.role;
+          if (userRole !== 'admin') {
+             window.location.href = '../login.html';
+             return;
+          }
+          setIsLoading(false);
+        };
+        checkSession();
+      }, []);
+
+      if (isLoading) {
+        return <div style={{display:'flex', height:'100vh', width:'100%', alignItems:'center', justifyContent:'center'}}>Loading Admin Portal...</div>;
+      }
+
+      return (
+        <>
+          <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)}></div>
+          <Sidebar activeMenu={activeMenu} activeSub={activeSub} sidebarOpen={sidebarOpen} />
+          <div className="main-wrapper">
+            <TopHeader title={title} breadcrumb={breadcrumb} onToggleSidebar={() => setSidebarOpen(true)} />
+            <div className="content-area">
+              {children}
+            </div>
+          </div>
+        </>
+      );
+    };
+
+
+
+  const App = () => {
+    const [activeTab, setActiveTab] = React.useState('Overview');
+    const [data, setData] = React.useState({
+      students: 0,
+      presentAvg: '0%',
+      feesCollected: 0,
+      feesPending: 0,
+      feesOverdue: 0,
+      complaints: { total: 0, open: 0, prog: 0, res: 0, clos: 0 },
+      rooms: { total: 0, occupied: 0, vacant: 0 }
+    });
+
+    React.useEffect(() => {
+      const load = async () => {
+        if (!window.supabaseClient) return;
+        const supabase = window.supabaseClient;
+        
+        // Students
+        const { count: sCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
+        
+        // Attendance
+        const { data: attData } = await supabase.from('attendance').select('status');
+        let pAvg = '0%';
+        if (attData && attData.length > 0) {
+          const p = attData.filter(a => a.status === 'Present').length;
+          pAvg = ((p / attData.length) * 100).toFixed(2) + '%';
+        }
+        
+        // Fees
+        const { data: feeData } = await supabase.from('fees').select('paid_amount, total_fee');
+        let coll = 0, pend = 0;
+        if (feeData) {
+           feeData.forEach(f => {
+              coll += parseFloat(f.paid_amount);
+              const due = parseFloat(f.total_fee) - parseFloat(f.paid_amount);
+              if (due > 0) pend += due;
+           });
+        }
+        
+        // Complaints
+        const { data: cData } = await supabase.from('complaints').select('status');
+        let cTotal=0, cOpen=0, cProg=0, cRes=0, cClos=0;
+        if (cData) {
+          cTotal = cData.length;
+          cOpen = cData.filter(c => c.status === 'Open').length;
+          cProg = cData.filter(c => c.status === 'In Progress').length;
+          cRes  = cData.filter(c => c.status === 'Resolved').length;
+          cClos = cData.filter(c => c.status === 'Closed').length;
+        }
+
+        // Rooms
+        const { data: rData } = await supabase.from('rooms').select('occupancy, status');
+        let rTotal=0, rOcc=0, rVac=0;
+        if (rData) {
+          rTotal = rData.length;
+          rOcc = rData.filter(r => r.status === 'Occupied' || r.occupancy > 0).length;
+          rVac = rTotal - rOcc;
+        }
+
+        setData({
+           students: sCount || 0,
+           presentAvg: pAvg,
+           feesCollected: coll,
+           feesPending: pend,
+           feesOverdue: 0,
+           complaints: { total: cTotal, open: cOpen, prog: cProg, res: cRes, clos: cClos },
+           rooms: { total: rTotal, occupied: rOcc, vacant: rVac }
+        });
+      };
+      load();
+    }, []);
+
+    const occupancyPct = data.rooms.total > 0 ? ((data.rooms.occupied / data.rooms.total) * 100).toFixed(2) : '0.00';
+    
+    const { total, open, prog, res, clos } = data.complaints;
+    const openPct = total > 0 ? ((open/total)*100).toFixed(2) : '0.00';
+    const progPct = total > 0 ? ((prog/total)*100).toFixed(2) : '0.00';
+    const resPct = total > 0 ? ((res/total)*100).toFixed(2) : '0.00';
+    const closPct = total > 0 ? ((clos/total)*100).toFixed(2) : '0.00';
+
+    React.useEffect(() => {
+      const d = (id, type, cfg) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const ex = Chart.getChart(el); if (ex) ex.destroy();
+        new Chart(el, { type, ...cfg });
+      };
+      const base = { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} } };
+
+      // Attendance line chart
+      d('attOverviewChart','line',{
+        data:{
+          labels:['18 May','19 May','20 May','21 May','22 May','23 May','24 May'],
+          datasets:[
+            { label:'Present %', data:[75,78,80,82,84,83,85], borderColor:'#10B981', backgroundColor:'rgba(16,185,129,0.08)', borderWidth:2, tension:0.4, fill:true, pointRadius:4, pointBorderColor:'#fff', pointBorderWidth:2 },
+            { label:'Absent %',  data:[22,18,17,15,13,14,12], borderColor:'#EF4444', backgroundColor:'rgba(239,68,68,0.06)', borderWidth:2, tension:0.4, fill:true, pointRadius:4, pointBorderColor:'#fff', pointBorderWidth:2 },
+            { label:'Leave %',   data:[3,4,3,3,3,3,3],         borderColor:'#F59E0B', backgroundColor:'rgba(245,158,11,0.06)', borderWidth:2, tension:0.4, fill:true, pointRadius:4, pointBorderColor:'#fff', pointBorderWidth:2 },
+          ]
+        },
+        options:{ ...base, scales:{ y:{ min:0, max:100, ticks:{callback:v=>v+'%'}, grid:{color:'#F1F5F9'} }, x:{grid:{display:false}} } }
+      });
+
+      // Fee donut
+      d('feeDonutChart','doughnut',{
+        data:{ labels:['Collected','Pending','Overdue'], datasets:[{ data:[data.feesCollected, data.feesPending, data.feesOverdue], backgroundColor:['#10B981','#3B82F6','#EF4444'], borderWidth:3, cutout:'72%' }] },
+        options:base
+      });
+
+      // Complaints donut
+      d('compDonutChart','doughnut',{
+        data:{ labels:['Open','In Progress','Resolved','Closed'], datasets:[{ data:[open, prog, res, clos], backgroundColor:['#10B981','#F59E0B','#3B82F6','#EF4444'], borderWidth:3, cutout:'72%' }] },
+        options:base
+      });
+    }, [data]);
+
+    const cats = [
+      { icon:'fa-user-graduate', bg:'#EFF6FF', c:'#3B82F6', title:'Student Reports',     sub:'View and generate reports related to student information.', href:'admin_student_reports.html' },
+      { icon:'fa-calendar-check',bg:'#ECFDF5', c:'#10B981', title:'Attendance Reports',  sub:'View attendance summary and detailed reports.', href:'attendence_report.html' },
+      { icon:'fa-rupee-sign',    bg:'#FFF7ED', c:'#F97316', title:'Fees Reports',         sub:'View fee collection, pending payments and transactions.', href:'fee_reports.html' },
+      { icon:'fa-bullhorn',      bg:'#FEF2F2', c:'#EF4444', title:'Complaints Reports',  sub:'View complaints status and resolution reports.', href:'complaints_reports.html' },
+      { icon:'fa-bed',           bg:'#F5F3FF', c:'#8B5CF6', title:'Room Reports',         sub:'View room allocation, occupancy and availability reports.', href:'room_reports.html' },
+    ];
+
+    return (
+      <Layout activeMenu="Reports" activeSub="Overview" title="Reports" breadcrumb="Dashboard > Reports > Overview">
+
+        {/* Tabs */}
+        <div className="ro-tabs" style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+          <div style={{display:'flex'}}>
+            {['Overview','Custom Reports'].map(t => (
+              <div key={t} className={`ro-tab ${activeTab===t?'active':''}`} onClick={() => { if(t === 'Custom Reports') window.location.href='custom_reports.html'; else setActiveTab(t); }}>{t}</div>
+            ))}
+          </div>
+          <a href="share_report.html" style={{background:'#1D4ED8', color:'white', padding:'8px 16px', borderRadius:'8px', textDecoration:'none', fontSize:'13px', fontWeight:600}}><i className="fas fa-share-alt"></i> Share Report</a>
+        </div>
+
+        {/* KPI Row */}
+        <div className="kpi-row5">
+          {[
+            { icon:'fa-user-friends', bg:'#EFF6FF', c:'#3B82F6', val:data.students.toString(), label:'Total Students',    sub:'All Students' },
+            { icon:'fa-check-circle', bg:'#ECFDF5', c:'#10B981', val:data.presentAvg,                 label:'Present (Avg)',     sub:'Attendance' },
+            { icon:'fa-rupee-sign',   bg:'#FFF7ED', c:'#F97316', val:'₹' + new Intl.NumberFormat('en-IN').format(data.feesCollected),              label:'Total Collection',  sub:'Fees Collected' },
+            { icon:'fa-comments',     bg:'#FEF2F2', c:'#EC4899', val:data.complaints.total.toString(), label:'Total Complaints',  sub:'All Complaints' },
+            { icon:'fa-door-open',    bg:'#F5F3FF', c:'#8B5CF6', val:data.rooms.total.toString(),    label:'Total Rooms',       sub:'All Rooms' },
+          ].map((k,i) => (
+            <div className="kpi5" key={i}>
+              <div className="kpi5-icon" style={{background:k.bg, color:k.c}}><i className={`fas ${k.icon}`}></i></div>
+              <div>
+                <div className="kpi5-val">{k.val}</div>
+                <div className="kpi5-label">{k.label}</div>
+                <div style={{fontSize:'11px', color:'#94A3B8'}}>{k.sub}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mid row */}
+        <div className="mid-row">
+          {/* Reports by Category */}
+          <div className="card">
+            <div className="card-title">Reports by Category</div>
+            {cats.map((c,i) => (
+              <a href={c.href} key={i} style={{textDecoration:'none'}} className="cat-item">
+                <div className="cat-icon" style={{background:c.bg, color:c.c}}><i className={`fas ${c.icon}`}></i></div>
+                <div className="cat-info">
+                  <div className="ct">{c.title}</div>
+                  <div className="cs">{c.sub}</div>
+                </div>
+                <i className="fas fa-chevron-right cat-arrow"></i>
+              </a>
+            ))}
+          </div>
+
+          {/* Attendance overview chart */}
+          <div className="card">
+            <div className="cc-head">
+              <div className="card-title" style={{margin:0}}>Attendance Overview</div>
+              <select className="cc-select"><option>All Departments</option><option>Computer Science</option><option>Mechanical Engg.</option></select>
+            </div>
+            <div className="legend-row">
+              <div className="leg"><div className="leg-dot" style={{background:'#10B981'}}></div>Present %</div>
+              <div className="leg"><div className="leg-dot" style={{background:'#EF4444'}}></div>Absent %</div>
+              <div className="leg"><div className="leg-dot" style={{background:'#F59E0B'}}></div>Leave %</div>
+            </div>
+            <div style={{height:'220px'}}><canvas id="attOverviewChart"></canvas></div>
+          </div>
+        </div>
+
+        {/* Bottom row */}
+        <div className="bottom-row">
+          {/* Fees */}
+          <div className="card">
+            <div className="card-title">Fees Collection Summary</div>
+            <div className="donut-wrap">
+              <canvas id="feeDonutChart"></canvas>
+              <div className="donut-center">
+                <div className="dc-val">₹{new Intl.NumberFormat('en-IN').format(data.feesCollected)}</div>
+                <div className="dc-sub">Total Collected</div>
+              </div>
+            </div>
+            <div className="pie-legend">
+              {[
+                ['#10B981','Collected','₹'+new Intl.NumberFormat('en-IN').format(data.feesCollected), data.feesCollected > 0 || data.feesPending > 0 ? Math.round((data.feesCollected/(data.feesCollected+data.feesPending))*100)+'%' : '0%'],
+                ['#3B82F6','Pending','₹'+new Intl.NumberFormat('en-IN').format(data.feesPending), data.feesCollected > 0 || data.feesPending > 0 ? Math.round((data.feesPending/(data.feesCollected+data.feesPending))*100)+'%' : '0%'],
+                ['#EF4444','Overdue','₹0','0%']
+              ].map(([c,l,v,p],i)=>(
+                <div className="pl-row" key={i}>
+                  <div className="pl-l"><div className="pl-dot" style={{background:c}}></div>{l}</div>
+                  <div className="pl-r">{v}<span className="pl-pct">({p})</span></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Complaints */}
+          <div className="card">
+            <div className="card-title">Complaints Summary</div>
+            <div className="donut-wrap">
+              <canvas id="compDonutChart"></canvas>
+              <div className="donut-center">
+                <div className="dc-val">{total}</div>
+                <div className="dc-sub">Total</div>
+              </div>
+            </div>
+            <div className="pie-legend">
+              {[['#10B981','Open',open,openPct+'%'],['#F59E0B','In Progress',prog,progPct+'%'],['#3B82F6','Resolved',res,resPct+'%'],['#EF4444','Closed',clos,closPct+'%']].map(([c,l,v,p],i)=>(
+                <div className="pl-row" key={i}>
+                  <div className="pl-l"><div className="pl-dot" style={{background:c}}></div>{l}</div>
+                  <div className="pl-r">{v}<span className="pl-pct">({p})</span></div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Room Occupancy */}
+          <div className="card">
+            <div className="cc-head">
+              <div className="card-title" style={{margin:0}}>Room Occupancy</div>
+              <select className="cc-select"><option>All Rooms</option><option>Block A</option><option>Block B</option></select>
+            </div>
+            <div className="occ-bar-wrap"><div className="occ-bar-fill" style={{width:`${occupancyPct}%`}}></div></div>
+            <div className="occ-meta"><span>{data.rooms.occupied} / {data.rooms.total}</span><span style={{color:'#1D4ED8'}}>{occupancyPct}% Occupied</span></div>
+            <div className="occ-cards">
+              <div className="occ-mini">
+                <div className="occ-mini-label"><i className="fas fa-bed" style={{color:'#3B82F6'}}></i> Occupied Rooms</div>
+                <div className="occ-mini-val">{data.rooms.occupied}</div>
+              </div>
+              <div className="occ-mini">
+                <div className="occ-mini-label"><i className="fas fa-door-open" style={{color:'#8B5CF6'}}></i> Vacant Rooms</div>
+                <div className="occ-mini-val">{data.rooms.vacant}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer note */}
+        <div className="report-note">
+          <i className="fas fa-info-circle"></i>
+          Reports are generated based on the selected date range.
+        </div>
+
+      </Layout>
+    );
+  };
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
